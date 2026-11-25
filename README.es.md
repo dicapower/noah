@@ -42,14 +42,16 @@ noah version
 
 ### Actualizar
 
-```sh
-noah export > ~/noah-backup.jsonl      # opcional pero barato: una copia de todo
-cd noah && git pull
-go build -ldflags "-X main.version=$(git describe --tags --abbrev=0)" -o bin/noah ./cmd/noah
-./bin/noah doctor                       # muestra la versión del esquema y comprueba la integridad
-```
+1. **Haz copia (opcional pero barato).** `noah export > ~/noah-backup.jsonl` guarda todas las memorias en JSON lines. Si quieres también la base de datos tal cual, copia `~/.noah/noah.db*` (tres archivos mientras está abierta).
+2. **Consigue el binario nuevo**, según cómo lo instalaste:
+   - *Binario descargado:* coge `noah-vX.Y.Z-<so>-<arq>.tar.gz` (`.zip` en Windows) de la [página de Releases](https://github.com/dicapower/noah/releases), compruébalo con `sha256sum -c SHA256SUMS --ignore-missing` (macOS: `shasum -a 256 -c SHA256SUMS --ignore-missing`), descomprímelo y sustituye el `noah` antiguo por el nuevo. En Windows cierra antes el agente, porque no deja sobrescribir un programa en marcha.
+   - *Compilado desde el código:* `cd noah && git pull && go build -o noah ./cmd/noah`, y muévelo a tu `PATH` como al instalar.
+   - *`go install`:* `go install github.com/dicapower/noah/cmd/noah@latest`.
+3. **Compruébalo.** `noah version` muestra la versión nueva y `noah doctor` la versión del esquema y la integridad. La base de datos se migra sola la primera vez que la abre el binario nuevo; las migraciones solo añaden, y una base de datos de un noah más nuevo se rechaza en lugar de dañarse.
+4. **Reinicia tu agente** para que lance el binario nuevo, y comprueba que su configuración MCP apunta al archivo que acabas de sustituir (`which noah` muestra el que hay en tu `PATH`).
+5. **Lee el [CHANGELOG](CHANGELOG.md)** por si algo cambia el comportamiento. Tras una actualización grande, ejecuta `noah stale` para ver qué notas están marcadas o sin uso.
 
-La base de datos se migra sola la primera vez que la abre el binario nuevo; las migraciones solo añaden, y una base de datos de un noah más nuevo se rechaza en lugar de dañarse. Reinicia después tu agente para que cargue el binario nuevo y comprueba que su configuración MCP apunta al que acabas de compilar.
+No hay nada que reinstalar en los hooks de tu agente: `noah setup` solo imprime la configuración y los hooks llaman al mismo binario `noah`.
 
 Es Go puro, sin dependencias en C: el mismo comando compila en macOS, Linux y Windows.
 
@@ -177,7 +179,17 @@ noah import engram                           migrar desde Engram
 noah doctor | stale | export | version       mantenimiento
 ```
 
-`noah <comando> -h` muestra los flags. `noah export > backup.jsonl` guarda todo en JSON lines.
+`noah <comando> -h` muestra los flags. Los más usados:
+
+| Comando | Flags |
+|---|---|
+| `noah save [texto\|-]` | `-title`, `-kind` (decision, bugfix, pattern, note…), `-topic` (clave estable: guardar de nuevo con ella revisa la nota), `-tag` (repetible), `-pin`, `-space` |
+| `noah search <pregunta>` | `-all` (todos los proyectos), `-kind`, `-limit` (por defecto 8), `-json`, `-space` |
+| `noah context` | `-limit` (por defecto 12), `-max-tokens` (por defecto 1500), `-space` |
+| `noah stale` | `-days` (por defecto 180), `-limit` (por defecto 30), `-space`. Lista notas que nadie usa desde hace meses y notas marcadas con `⚠` |
+| `noah export` | `-space`. `noah export > backup.jsonl` guarda todo en JSON lines |
+
+`noah get <id>` muestra una nota completa (incluido por qué está marcada); `noah forget <id>` la borra; `noah move <id> <espacio>` la mueve.
 
 | Variable de entorno | Significado | Por defecto |
 |---|---|---|

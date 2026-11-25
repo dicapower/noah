@@ -44,14 +44,16 @@ It is pure Go with no C dependencies, so the same command builds on macOS, Linux
 
 ### Upgrading
 
-```sh
-noah export > ~/noah-backup.jsonl      # optional but cheap: a copy of everything
-cd noah && git pull
-go build -ldflags "-X main.version=$(git describe --tags --abbrev=0)" -o bin/noah ./cmd/noah
-./bin/noah doctor                       # shows the schema version and checks integrity
-```
+1. **Back up (optional but cheap).** `noah export > ~/noah-backup.jsonl` writes every memory as JSON lines. To keep the raw database too, copy `~/.noah/noah.db*` (three files while the database is open).
+2. **Get the new binary**, by whichever way you installed:
+   - *Downloaded binary:* take `noah-vX.Y.Z-<os>-<arch>.tar.gz` (`.zip` on Windows) from the [Releases page](https://github.com/dicapower/noah/releases), check it with `sha256sum -c SHA256SUMS --ignore-missing` (macOS: `shasum -a 256 -c SHA256SUMS --ignore-missing`), unpack it and replace the old `noah` with the new one. Close the agent first on Windows, which will not overwrite a running program.
+   - *Built from source:* `cd noah && git pull && go build -o noah ./cmd/noah`, then move it into your `PATH` as when you installed.
+   - *`go install`:* `go install github.com/dicapower/noah/cmd/noah@latest`.
+3. **Check it.** `noah version` prints the new version and `noah doctor` shows the schema version and checks integrity. The database migrates itself the first time the new binary opens it; migrations only add, and a database from a newer noah is refused rather than damaged.
+4. **Restart your agent** so it launches the new binary, and make sure its MCP config points to the file you just replaced (`which noah` shows the one in your `PATH`).
+5. **Read the [CHANGELOG](CHANGELOG.md)** for anything that changes behaviour. Run `noah stale` after a big upgrade to see which notes are flagged or unused.
 
-The database migrates itself the first time the new binary opens it; migrations only add, and a database from a newer noah is refused rather than damaged. Restart your agent afterwards so it loads the new binary, and make sure its MCP config points to the one you just built.
+Nothing to reinstall in your agent's hooks: `noah setup` only prints the configuration, and the hooks call the same `noah` binary.
 
 ## Connect your agent (2 minutes)
 
@@ -179,7 +181,17 @@ noah import engram                           migrate from Engram
 noah doctor | stale | export | version       maintenance
 ```
 
-`noah <command> -h` shows the flags. `noah export > backup.jsonl` writes everything as JSON lines.
+`noah <command> -h` shows the flags. The ones you will use most:
+
+| Command | Flags |
+|---|---|
+| `noah save [text\|-]` | `-title`, `-kind` (decision, bugfix, pattern, note…), `-topic` (stable key: saving again with it revises the note), `-tag` (repeatable), `-pin`, `-space` |
+| `noah search <question>` | `-all` (every project), `-kind`, `-limit` (default 8), `-json`, `-space` |
+| `noah context` | `-limit` (default 12), `-max-tokens` (default 1500), `-space` |
+| `noah stale` | `-days` (default 180), `-limit` (default 30), `-space`. Lists notes nobody has used for months and notes flagged `⚠` |
+| `noah export` | `-space`. `noah export > backup.jsonl` writes everything as JSON lines |
+
+`noah get <id>` shows a note in full (including why it is flagged); `noah forget <id>` deletes it; `noah move <id> <space>` moves it.
 
 | Environment variable | Meaning | Default |
 |---|---|---|

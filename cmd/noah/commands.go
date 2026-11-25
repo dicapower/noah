@@ -87,7 +87,7 @@ func (c *cli) mcp(args []string) error {
 	if err != nil {
 		return err
 	}
-	return server.ServeStdio(mcpserver.New(mcpserver.Config{Store: st, Space: sp, Version: version}))
+	return server.ServeStdio(mcpserver.New(mcpserver.Config{Store: st, Space: sp, Version: currentVersion()}))
 }
 
 func (c *cli) save(args []string) error {

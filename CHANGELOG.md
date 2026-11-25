@@ -2,6 +2,12 @@
 
 All notable changes to noah. Versions follow [Semantic Versioning](https://semver.org); while noah is below 1.0 the storage format and commands may still change, and any schema change migrates your database automatically on first run.
 
+## Unreleased
+
+### Changed
+- `noah version` now reports the right version also when noah is built without `-ldflags` (a plain `go build` in a tagged checkout, or `go install ...@vX.Y.Z`); before it printed `dev`.
+- README (English and Spanish): step-by-step upgrade (downloaded binary with checksum, source, `go install`) and a table with the flags of `save`, `search`, `context`, `stale` and `export`.
+
 ## v0.4.1
 
 ### Fixed

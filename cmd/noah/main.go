@@ -5,10 +5,24 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 )
 
 // version is set at build time: -ldflags "-X main.version=v0.1.0".
+// Without it (a plain `go build` or `go install ...@vX.Y.Z`) Go's own build
+// information is used, so the version is still right after an upgrade.
 var version = "dev"
+
+// currentVersion returns the version to print.
+func currentVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return bi.Main.Version
+	}
+	return version
+}
 
 const usage = `noah — persistent memory for AI coding agents
 
@@ -90,7 +104,7 @@ func run(args []string, in io.Reader, out, errw io.Writer) int {
 	case "import":
 		err = c.importCmd(rest)
 	case "version", "--version", "-v":
-		fmt.Fprintln(out, "noah", version)
+		fmt.Fprintln(out, "noah", currentVersion())
 	case "help", "--help", "-h":
 		fmt.Fprint(out, usage)
 	default:
