@@ -21,6 +21,7 @@ Persistent memory for AI coding agents. Go, SQLite (FTS5), MCP over stdio. Apach
 - **Search quality:** `TestRecall` is a contract. Raise `minPartial` when ranking improves; never lower it to make a change pass.
 - **Context is injected unprompted, so it is untrusted input:** memories reach the agent only through `memory.RenderContext` (labelled, closing tag neutralised, invisible characters stripped). Notes flagged by `memory.Suspicious` and not written by the user are never injected automatically (`memory.Injectable`).
 - **Budgets:** anything automatic (session start, `mem_context`) has a token cap. Pinned notes first, then decisions/conventions, recency only as filler.
+- **Detector changes:** a `memory.Suspicious` pattern that fires on ordinary notes hides them from automatic context. Add an ordinary-note case to `suspicious_test.go` for every pattern you add, and when you change what is flagged, append a migration that clears and recomputes `flags` (see v4, v5).
 - **Agents never gain trust:** `mem_save` always writes trust `agent`; only the CLI writes `user`.
 - Hooks must never fail or pollute a session: exit 0, clean stdout.
 - No network access, no telemetry, no cgo (pure-Go SQLite).

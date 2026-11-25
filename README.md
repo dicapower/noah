@@ -24,7 +24,7 @@ right project, without you pasting context.
 - **Safe by design.** Secrets are redacted before they are stored, and a memory an agent writes can never override one you wrote.
 - **Per project.** Memories belong to the project you are in and never leak into another.
 
-> **Status: v0.1, pre-release.** It works and is tested, but it is young. Known limits are listed [at the end](#known-limits).
+> **Status: v0.4, pre-1.0.** It works and is tested, but it is young; the storage format and commands may still change (databases migrate automatically). Known limits are listed [at the end](#known-limits).
 
 ## Install
 
@@ -41,6 +41,17 @@ noah version
 (Once the repository is public: `go install github.com/dicapower/noah/cmd/noah@latest`, or download a ready-made binary from the Releases page. Every `v*` tag publishes binaries for Linux, macOS and Windows. See [CHANGELOG.md](CHANGELOG.md).)
 
 It is pure Go with no C dependencies, so the same command builds on macOS, Linux and Windows.
+
+### Upgrading
+
+```sh
+noah export > ~/noah-backup.jsonl      # optional but cheap: a copy of everything
+cd noah && git pull
+go build -ldflags "-X main.version=$(git describe --tags --abbrev=0)" -o bin/noah ./cmd/noah
+./bin/noah doctor                       # shows the schema version and checks integrity
+```
+
+The database migrates itself the first time the new binary opens it; migrations only add, and a database from a newer noah is refused rather than damaged. Restart your agent afterwards so it loads the new binary, and make sure its MCP config points to the one you just built.
 
 ## Connect your agent (2 minutes)
 
@@ -182,6 +193,7 @@ noah doctor | stale | export | version       maintenance
 - **The agent does not see the tools.** Restart the agent after adding the server and check the path with `which noah`; use the full path in the config if the agent does not inherit your `PATH`.
 - **Searches return nothing.** You may be in a different project than the one where you saved. Run `noah space`, `noah spaces`, or search with `--all`.
 - **Something looks wrong.** `noah doctor` checks database integrity, the search index and stored secrets.
+- **A note I wrote is flagged `⚠`.** Run `noah get <id>` to see why. If it is a false alarm, [open an issue](https://github.com/dicapower/noah/issues) with the sentence that triggered it; the detector is deliberately narrow, and real notes are the best test data. `noah forget <id>` removes a note you no longer want.
 - **Start over.** Delete `~/.noah/noah.db` (back it up first with `noah export`).
 
 ## Performance
@@ -201,6 +213,7 @@ Method, comparisons and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHIT
 - **Matches words, not meaning.** "What database did we choose?" will not find a note that only says "SQLite". Optional embeddings are planned.
 - **A word that appears in almost every memory is slow at very large sizes** (about 280 ms at 100,000 memories). Normal queries are much faster.
 - **No sync between machines.** Share with `noah export` and Git.
+- **The `⚠` detector is a heuristic.** It looks for a short list of known injection phrases, download-and-run commands and hidden characters. It misses paraphrased attacks, and v0.4.0 raised false alarms on real notes before it was narrowed in v0.4.1. Treat it as a smoke alarm, not a guarantee.
 - The numbers above come from synthetic data; results on real notes will vary.
 
 ## Development

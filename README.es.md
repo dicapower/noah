@@ -24,7 +24,7 @@ en el proyecto correcto, sin que tengas que pegar contexto.
 - **Seguro.** Las credenciales se tachan antes de guardarse y una memoria escrita por un agente nunca puede pisar una tuya.
 - **Por proyecto.** Cada memoria pertenece al proyecto donde estás y no se mezcla con otros.
 
-> **Estado: v0.1, pre-lanzamiento.** Funciona y tiene tests, pero es joven. Los límites conocidos están [al final](#límites-conocidos).
+> **Estado: v0.4, antes de la 1.0.** Funciona y tiene tests, pero es joven; el formato de almacenamiento y los comandos aún pueden cambiar (las bases de datos se migran solas). Los límites conocidos están [al final](#límites-conocidos).
 
 ## Instalación
 
@@ -39,6 +39,17 @@ noah version
 ```
 
 (Cuando el repositorio sea público: `go install github.com/dicapower/noah/cmd/noah@latest`, o descarga un binario ya compilado desde la página de Releases. Cada tag `v*` publica binarios para Linux, macOS y Windows. Consulta [CHANGELOG.md](CHANGELOG.md).)
+
+### Actualizar
+
+```sh
+noah export > ~/noah-backup.jsonl      # opcional pero barato: una copia de todo
+cd noah && git pull
+go build -ldflags "-X main.version=$(git describe --tags --abbrev=0)" -o bin/noah ./cmd/noah
+./bin/noah doctor                       # muestra la versión del esquema y comprueba la integridad
+```
+
+La base de datos se migra sola la primera vez que la abre el binario nuevo; las migraciones solo añaden, y una base de datos de un noah más nuevo se rechaza en lugar de dañarse. Reinicia después tu agente para que cargue el binario nuevo y comprueba que su configuración MCP apunta al que acabas de compilar.
 
 Es Go puro, sin dependencias en C: el mismo comando compila en macOS, Linux y Windows.
 
@@ -180,6 +191,7 @@ noah doctor | stale | export | version       mantenimiento
 - **El agente no ve las herramientas.** Reinícialo tras añadir el servidor y comprueba la ruta con `which noah`; usa la ruta completa en la configuración si el agente no hereda tu `PATH`.
 - **Las búsquedas no devuelven nada.** Puede que estés en un proyecto distinto al de guardado. Ejecuta `noah space`, `noah spaces` o busca con `--all`.
 - **Algo no cuadra.** `noah doctor` comprueba la integridad de la base de datos, el índice de búsqueda y las credenciales guardadas.
+- **Una nota mía sale marcada con `⚠`.** Ejecuta `noah get <id>` para ver el motivo. Si es una falsa alarma, [abre una issue](https://github.com/dicapower/noah/issues) con la frase que la dispara; el detector es estrecho a propósito y las notas reales son los mejores datos de prueba. `noah forget <id>` borra una nota que ya no quieras.
 - **Empezar de cero.** Borra `~/.noah/noah.db` (haz antes copia con `noah export`).
 
 ## Rendimiento
@@ -199,6 +211,7 @@ Método, comparativas y experimentos descartados: [docs/ARCHITECTURE.md](docs/AR
 - **Busca palabras, no significado.** "¿Qué base de datos elegimos?" no encontrará una nota que solo diga "SQLite". Están planificados embeddings opcionales.
 - **Una palabra presente en casi todas las memorias es lenta a tamaños muy grandes** (unos 280 ms con 100.000 memorias). Las consultas normales son mucho más rápidas.
 - **Sin sincronización entre equipos.** Comparte con `noah export` y Git.
+- **El detector `⚠` es una heurística.** Busca una lista corta de frases de inyección conocidas, comandos de descargar-y-ejecutar y caracteres ocultos. No detecta ataques parafraseados, y la v0.4.0 dio falsas alarmas con notas reales antes de estrecharlo en la v0.4.1. Es una alarma de humo, no una garantía.
 - Las cifras salen de datos sintéticos; con notas reales variarán.
 
 ## Desarrollo
