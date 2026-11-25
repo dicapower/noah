@@ -2,7 +2,7 @@
 
 All notable changes to noah. Versions follow [Semantic Versioning](https://semver.org); while noah is below 1.0 the storage format and commands may still change, and any schema change migrates your database automatically on first run.
 
-## Unreleased
+## v0.4.0
 
 ### Added
 - **Token budgets.** `mem_search` and `mem_context` take `max_tokens` (default 1,500); the session-start hook is capped by `NOAH_START_TOKENS` (default 1,500). The best hit is always returned.
