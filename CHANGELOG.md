@@ -12,6 +12,9 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 ### Changed
 - **Memory ids are never reused.** Deleting the newest memory used to free its number for the next one. The database migrates to schema v2 on first run; memories and the search index are kept.
 
+### Fixed
+- **Windows:** noah could not open its database because the drive letter of the path was read as a host name. CI now passes on Windows, macOS and Linux.
+
 ## v0.2.0
 
 ### Added
