@@ -152,7 +152,7 @@ La memoria de agentes es una superficie de ataque: lo que un agente guarda se vu
 
 - **Las credenciales no llegan a la base de datos.** Claves de API, tokens, claves privadas y contraseñas en URLs se tachan al guardar. `NOAH_SECRETS=block` rechaza en su lugar; `off` lo desactiva. `noah doctor` revisa lo ya guardado.
 - **Dos niveles de confianza.** Lo que guardas desde la terminal es `user`; lo que guarda un agente es `agent`. Un agente no puede sobrescribir, fijar ni borrar una memoria `user`.
-- **Notas marcadas.** Una nota que ordena a la IA ignorar sus reglas, ejecuta un comando de descargar-y-ejecutar, lleva un enlace u oculta caracteres recibe una marca `⚠`. Si la escribió un agente, se puede buscar (con aviso) pero nunca se inyecta sola en una sesión. `noah stale` las lista para revisarlas. Es una heurística: hace visibles los casos comunes, no todos los ataques.
+- **Notas marcadas.** Una nota que ordena a la IA ignorar sus reglas, ejecuta un comando de descargar-y-ejecutar u oculta caracteres recibe una marca `⚠`. Si la escribió un agente, se puede buscar (con aviso) pero nunca se inyecta sola en una sesión. `noah stale` las lista para revisarlas. Es una heurística: hace visibles los casos comunes, no todos los ataques.
 - **Contexto etiquetado.** Las memorias inyectadas van en un bloque que indica que son notas de referencia, no instrucciones, y quién escribió cada una. Una memoria no puede cerrar ese bloque desde dentro.
 - **Sin red.** El agente lanza `noah mcp` por stdio. No hay servidor HTTP al que una web pueda acceder. El archivo de base de datos se crea privado (`0600`).
 
