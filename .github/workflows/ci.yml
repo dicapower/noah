@@ -18,3 +18,13 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
       - run: go build ./cmd/noah
+  recall:
+    # Search quality is part of the contract: a ranking change that makes noah
+    # miss an answer fails here. Runs the larger 10,000-memory case too.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: NOAH_RECALL_N=10000 go test ./internal/search -run 'TestRecall' -v -count=1

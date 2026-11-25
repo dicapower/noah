@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dicapower/noah/internal/memory"
 	"github.com/dicapower/noah/internal/query"
@@ -49,8 +50,9 @@ type Hit struct {
 
 // Weights of the final score; they sum to 1.
 const (
-	wBM25     = 0.45
-	wCoverage = 0.25
+	wBM25     = 0.40
+	wCoverage = 0.22 // share of the question's terms found, rare terms counting more
+	wTitle    = 0.08 // share of the question's terms found in the title
 	wRecency  = 0.12
 	wTrust    = 0.10
 	wPinned   = 0.08
@@ -93,14 +95,17 @@ func Run(ctx context.Context, src Source, q string, opt Options) ([]Hit, error) 
 	if err != nil {
 		return nil, err
 	}
-	if len(cands) < opt.Limit && len(stems) > 1 {
+	// Always widen to "any term" too. Stopping after the AND phase finds enough
+	// results hides the note that matches the rare terms of the question but
+	// lacks one of its common words (e.g. "configuramos", "producción").
+	if len(stems) > 1 {
 		more, err := collect("any")
 		if err != nil {
 			return nil, err
 		}
 		cands = merge(cands, more)
 	}
-	return rerank(cands, stems, opt), nil
+	return rerank(cands, stems, query.Terms(q), opt), nil
 }
 
 func merge(a, b []memory.Scored) []memory.Scored {
@@ -116,7 +121,7 @@ func merge(a, b []memory.Scored) []memory.Scored {
 	return a
 }
 
-func rerank(cands []memory.Scored, stems []string, opt Options) []Hit {
+func rerank(cands []memory.Scored, stems, terms []string, opt Options) []Hit {
 	if len(cands) == 0 {
 		return nil
 	}
@@ -128,28 +133,59 @@ func rerank(cands []memory.Scored, stems []string, opt Options) []Hit {
 	for _, c := range cands {
 		best = math.Min(best, c.BM25)
 	}
+	// Inverse document frequency among the candidates: a term that nearly every
+	// candidate contains ("producción") says little about which one answers the
+	// question, while a term only one candidate contains is the real signal.
+	texts := make([]string, len(cands))
+	df := make([]int, len(stems))
+	for i, c := range cands {
+		m := c.Memory
+		texts[i] = query.Fold(m.Title + "\n" + m.Content + "\n" + strings.Join(m.Tags, " "))
+		for j, s := range stems {
+			if strings.Contains(texts[i], s) {
+				df[j]++
+			}
+		}
+	}
+	idf := make([]float64, len(stems))
+	idfSum := 0.0
+	for j := range stems {
+		idf[j] = math.Log(1 + float64(len(cands))/float64(maxInt(df[j], 1)))
+		idfSum += idf[j]
+	}
 	hits := make([]Hit, 0, len(cands))
-	for _, c := range cands {
+	for i, c := range cands {
 		m := c.Memory
 		bm := 1.0
 		if best < 0 {
 			bm = math.Max(0, math.Min(1, c.BM25/best))
 		}
-		text := query.Fold(m.Title + "\n" + m.Content + "\n" + strings.Join(m.Tags, " "))
+		title := query.Fold(m.Title)
+		words := wordSet(texts[i])
+		titleWords := wordSet(title)
 		matched := 0
-		for _, s := range stems {
-			if strings.Contains(text, s) {
+		covW, titleW := 0.0, 0.0
+		for j, s := range stems {
+			// A whole-word match counts fully; matching only as a prefix (the
+			// stem of "factura" also finds "facturado", and a name like
+			// "Povetu" also finds "povetuzi") counts half.
+			if w := matchWeight(words, texts[i], terms[j], s); w > 0 {
 				matched++
+				covW += idf[j] * w
+			}
+			if w := matchWeight(titleWords, title, terms[j], s); w > 0 {
+				titleW += w
 			}
 		}
-		cov := float64(matched) / float64(len(stems))
+		cov := covW / idfSum
+		titleCov := titleW / float64(len(stems))
 		ageDays := math.Max(0, opt.Now.Sub(time.UnixMilli(m.UpdatedAt)).Hours()/24)
 		rec := math.Exp(-ageDays / halfLife)
 		pin := 0.0
 		if m.Pinned {
 			pin = 1
 		}
-		rel := wBM25*bm + wCoverage*cov
+		rel := wBM25*bm + wCoverage*cov + wTitle*titleCov
 		score := rel + wRecency*rec + wTrust*m.Trust.Rank() + wPinned*pin
 		hits = append(hits, Hit{Memory: m, Score: score, rel: rel, Matched: matched, Total: len(stems), Snippet: snippet(m.Content, stems)})
 	}
@@ -174,6 +210,26 @@ func rerank(cands []memory.Scored, stems []string, opt Options) []Hit {
 		hits = hits[:opt.Limit]
 	}
 	return hits
+}
+
+func wordSet(folded string) map[string]bool {
+	set := map[string]bool{}
+	for _, w := range strings.FieldsFunc(folded, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' }) {
+		set[w] = true
+	}
+	return set
+}
+
+// matchWeight is 1 for a whole-word match of term, 0.5 for any other
+// occurrence of its stem, 0 for none.
+func matchWeight(words map[string]bool, text, term, stem string) float64 {
+	if words[term] {
+		return 1
+	}
+	if strings.Contains(text, stem) {
+		return 0.5
+	}
+	return 0
 }
 
 // snippet returns about 220 characters of content around the first matching term.
