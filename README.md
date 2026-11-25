@@ -154,7 +154,7 @@ Agent memory is an attack surface: whatever an agent saves is read back into a f
 
 - **Secrets never reach the database.** API keys, tokens, private keys and passwords in URLs are redacted on save. `NOAH_SECRETS=block` refuses instead; `off` disables. `noah doctor` scans what is already stored.
 - **Two trust levels.** What you save from the terminal is `user`; what an agent saves is `agent`. An agent cannot overwrite, pin or delete a `user` memory.
-- **Flagged notes.** A note that tells the AI to ignore its rules, runs a download-and-execute command, carries a link or hides characters gets a `⚠` flag. If an agent wrote it, it is searchable (with a warning) but never injected into a session on its own. `noah stale` lists them for review. This is a heuristic: it makes the common cases visible, not every attack.
+- **Flagged notes.** A note that tells the AI to ignore its rules, runs a download-and-execute command or hides characters gets a `⚠` flag. If an agent wrote it, it is searchable (with a warning) but never injected into a session on its own. `noah stale` lists them for review. This is a heuristic: it makes the common cases visible, not every attack.
 - **Labelled context.** Injected memories are wrapped in a block that says they are reference notes, not instructions, and shows who wrote each. A memory cannot close that block from the inside.
 - **No network.** The agent launches `noah mcp` over stdio. There is no HTTP server for a web page to reach. The database file is created private (`0600`).
 

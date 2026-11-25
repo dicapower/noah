@@ -99,6 +99,9 @@ ALTER TABLE memories ADD COLUMN last_used_at INTEGER;
 ALTER TABLE memories ADD COLUMN flags TEXT NOT NULL DEFAULT '';
 CREATE INDEX idx_memories_used ON memories(space, last_used_at);
 `,
+	// v4: the url flag and the "without asking" pattern were dropped because
+	// they flagged ordinary notes; flags are recomputed for every memory.
+	`UPDATE memories SET flags = '';`,
 }
 
 func backfillFlags(ctx context.Context, tx *sql.Tx) error {
@@ -147,10 +150,10 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			tx.Rollback()
 			return fmt.Errorf("migration %d: %w", i+1, err)
 		}
-		if i == 2 { // v3 adds flags: raise them for the memories that already exist
+		if i == 2 || i == 3 { // v3 adds flags and v4 redefines them: recompute for existing memories
 			if err := backfillFlags(ctx, tx); err != nil {
 				tx.Rollback()
-				return fmt.Errorf("migration 3: %w", err)
+				return fmt.Errorf("migration %d: %w", i+1, err)
 			}
 		}
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {

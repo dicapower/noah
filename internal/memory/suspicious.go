@@ -12,10 +12,15 @@ import (
 const (
 	FlagInstruction = "instruction" // addresses the AI with commands or tries to override earlier rules
 	FlagCommand     = "command"     // contains a shell one-liner that downloads, decodes or deletes
-	FlagURL         = "url"         // contains a link
 	FlagHidden      = "hidden"      // contains invisible or direction-changing characters
 )
 
+// A bare link is not a flag: nearly every real note about a PR or ticket has
+// one, and flagging them hid a user's recent notes from automatic context. A
+// link only matters together with an instruction, which is flagged on its own.
+// "Without asking" is not a flag either: it mostly appears in protective rules
+// ("never delete X without asking").
+//
 // Persistent memory is an injection target: one poisoned write is replayed in
 // every later session. Detection here is deliberately cheap and heuristic. It
 // does not stop a determined attacker; it makes the common cases visible and
@@ -28,12 +33,10 @@ var (
 		`olvida (todas )?(las |tus )?(instrucciones|reglas)|` +
 		`(you|tu) (must|should|have to|debes|tienes que) (always |now |siempre |ahora )?(run|execute|ejecut|send|env[ií]a|upload|sube|delete|borra|curl|fetch)|` +
 		`(always|siempre|from now on|a partir de ahora) (send|env[ií]a|upload|sube|ignore|ignora|obey|obedece)|` +
-		`(without|sin) (asking|confirm|telling|informing|preguntar|confirmar|avisar|decir)|` +
 		`do not (tell|inform|mention to) the user|no (le )?(digas|cuentes|avises) al usuario|` +
 		`new instructions|nuevas instrucciones|` +
 		`(reveal|print|show|muestra|revela|imprime) (your |the |tu |el )?(system|hidden|secret|api|token|clave|secreto)`)
 	commandRe = regexp.MustCompile(`(?i)(curl|wget)[^\n|]*\|\s*(sudo\s+)?(ba|z|da)?sh\b|base64\s+(-d|--decode)|rm\s+-[a-z]*r[a-z]*f?\s+(/|~|\$HOME)|chmod\s+\+x|eval\s*\(|powershell[^\n]*-enc`)
-	urlRe     = regexp.MustCompile(`(?i)\bhttps?://[^\s)>\]]+`)
 )
 
 // Suspicious returns the flags that apply to a memory's title and content.
@@ -45,9 +48,6 @@ func Suspicious(title, content string) []string {
 	}
 	if commandRe.MatchString(text) {
 		out = append(out, FlagCommand)
-	}
-	if urlRe.MatchString(text) {
-		out = append(out, FlagURL)
 	}
 	if hasInvisible(text) {
 		out = append(out, FlagHidden)
