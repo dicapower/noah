@@ -5,7 +5,7 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 ## v0.4.1
 
 ### Fixed
-- **Too many `⚠` flags.** In v0.4.0 any note containing a link was flagged, which on real data meant almost every recent note about a PR or ticket, and those notes were left out of the automatic context. Links are no longer flagged, and "without asking" no longer counts as an override (it mostly appears in protective rules such as "never delete X without asking"). Schema v4 recomputes the flags of existing notes on first run.
+- **Too many `⚠` flags.** In v0.4.0 any note containing a link was flagged, which on real data meant almost every recent note about a PR or ticket, and those notes were left out of the automatic context. Links are no longer flagged, and "without asking" no longer counts as an override (it mostly appears in protective rules such as "never delete X without asking"). "always send" no longer counts either (it flagged a note saying a service should "always send" a field). Schema v4 and v5 recompute the flags of existing notes on first run.
 
 ## v0.4.0
 

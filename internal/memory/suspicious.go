@@ -32,7 +32,7 @@ var (
 		`ignora(r)? (todas )?(las |tus )?(instrucciones|reglas) (anteriores|previas)|` +
 		`olvida (todas )?(las |tus )?(instrucciones|reglas)|` +
 		`(you|tu) (must|should|have to|debes|tienes que) (always |now |siempre |ahora )?(run|execute|ejecut|send|env[ií]a|upload|sube|delete|borra|curl|fetch)|` +
-		`(always|siempre|from now on|a partir de ahora) (send|env[ií]a|upload|sube|ignore|ignora|obey|obedece)|` +
+		`(always|siempre|from now on|a partir de ahora) (ignore|ignora|obey|obedece)|` +
 		`do not (tell|inform|mention to) the user|no (le )?(digas|cuentes|avises) al usuario|` +
 		`new instructions|nuevas instrucciones|` +
 		`(reveal|print|show|muestra|revela|imprime) (your |the |tu |el )?(system|hidden|secret|api|token|clave|secreto)`)

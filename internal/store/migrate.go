@@ -102,6 +102,9 @@ CREATE INDEX idx_memories_used ON memories(space, last_used_at);
 	// v4: the url flag and the "without asking" pattern were dropped because
 	// they flagged ordinary notes; flags are recomputed for every memory.
 	`UPDATE memories SET flags = '';`,
+	// v5: "always send" dropped from the instruction patterns (it flagged
+	// ordinary notes about code); recompute again.
+	`UPDATE memories SET flags = '';`,
 }
 
 func backfillFlags(ctx context.Context, tx *sql.Tx) error {
@@ -150,7 +153,7 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			tx.Rollback()
 			return fmt.Errorf("migration %d: %w", i+1, err)
 		}
-		if i == 2 || i == 3 { // v3 adds flags and v4 redefines them: recompute for existing memories
+		if i >= 2 { // v3 adds flags; v4 and v5 redefine them: recompute for existing memories
 			if err := backfillFlags(ctx, tx); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("migration %d: %w", i+1, err)
