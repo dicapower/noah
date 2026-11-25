@@ -115,7 +115,11 @@ func TestHookSessionStartIsQuietAndValid(t *testing.T) {
 		t.Fatalf("hook output: %+v", r)
 	}
 	// a broken database must not fail the agent session
-	t.Setenv("NOAH_DB", "/dev/null/impossible/noah.db")
+	blocker := filepath.Join(t.TempDir(), "a-file")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NOAH_DB", filepath.Join(blocker, "noah.db")) // parent is a file: cannot be created, on any OS
 	if r := runCLI(t, `{}`, "hook", "session-start"); r.code != 0 || r.out != "" {
 		t.Fatalf("hook must swallow errors: %+v", r)
 	}
