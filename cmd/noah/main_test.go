@@ -26,7 +26,9 @@ func env(t *testing.T) string {
 	dir := t.TempDir()
 	proj := filepath.Join(dir, "my-proj")
 	os.MkdirAll(filepath.Join(proj, ".git"), 0o755)
-	t.Setenv("HOME", filepath.Join(dir, "home"))
+	home := filepath.Join(dir, "home")
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	t.Setenv("NOAH_DB", filepath.Join(dir, "db", "noah.db"))
 	t.Setenv("NOAH_SPACE", "")
 	t.Setenv("NOAH_SECRETS", "")
@@ -100,15 +102,15 @@ func TestDoctorAndSpaces(t *testing.T) {
 
 func TestHookSessionStartIsQuietAndValid(t *testing.T) {
 	proj := env(t)
-	r0 := runCLI(t, `{"cwd":"`+proj+`"}`, "hook", "session-start")
+	r0 := runCLI(t, cwdJSON(proj, ""), "hook", "session-start")
 	if r0.code != 0 || !strings.Contains(r0.out, "mem_save") || strings.Contains(r0.out, "<noah-memory") {
 		t.Fatalf("empty store must still print the protocol, without a memory block: %+v", r0)
 	}
-	if r := runCLI(t, `{"cwd":"`+proj+`","source":"compact"}`, "hook", "session-start"); !strings.Contains(r.out, "compacted") {
+	if r := runCLI(t, cwdJSON(proj, "compact"), "hook", "session-start"); !strings.Contains(r.out, "compacted") {
 		t.Fatalf("compact source must say so: %+v", r)
 	}
 	runCLI(t, "", "save", "Remember the deploy checklist")
-	r := runCLI(t, `{"cwd":"`+proj+`"}`, "hook", "session-start")
+	r := runCLI(t, cwdJSON(proj, ""), "hook", "session-start")
 	if r.code != 0 || !strings.Contains(r.out, `"hookEventName":"SessionStart"`) || !strings.Contains(r.out, "deploy checklist") {
 		t.Fatalf("hook output: %+v", r)
 	}
@@ -185,4 +187,14 @@ func TestGlobalMemoryAndMove(t *testing.T) {
 	if m := runCLI(t, "", "move", "x"); m.code != 2 {
 		t.Fatalf("bad usage must return 2: %+v", m)
 	}
+}
+
+// cwdJSON builds a hook payload; json.Marshal escapes the backslashes of Windows paths.
+func cwdJSON(cwd, source string) string {
+	m := map[string]string{"cwd": cwd}
+	if source != "" {
+		m["source"] = source
+	}
+	b, _ := json.Marshal(m)
+	return string(b)
 }

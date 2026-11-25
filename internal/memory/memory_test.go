@@ -62,6 +62,7 @@ func TestResolveSpace(t *testing.T) {
 		}
 	}
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows reads this one
 	t.Setenv("NOAH_SPACE", "")
 
 	if got := ResolveSpace(home); got != Unscoped {
