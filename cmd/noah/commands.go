@@ -6,8 +6,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/dicapower/noah/internal/importer"
 	"io"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -372,4 +375,67 @@ func (m *multi) Set(v string) error { *m = append(*m, v); return nil }
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+}
+
+func (c *cli) importCmd(args []string) error {
+	fs := c.flags("import")
+	dry := fs.Bool("dry-run", false, "show what would be imported without writing")
+	project := fs.String("project", "", "import only this Engram project")
+	trust := fs.String("trust", "agent", "trust for imported memories: agent or user")
+	pos, err := parse(fs, args)
+	if err != nil {
+		return err
+	}
+	if len(pos) == 0 || pos[0] != "engram" || len(pos) > 2 {
+		fmt.Fprintln(c.err, "usage: noah import engram [path/to/engram.db] [--dry-run] [--project name] [--trust agent|user]")
+		return errUsage
+	}
+	var tr memory.Trust
+	switch *trust {
+	case "agent":
+		tr = memory.TrustAgent
+	case "user":
+		tr = memory.TrustUser
+	default:
+		return fmt.Errorf("--trust must be agent or user")
+	}
+	path := ""
+	if len(pos) == 2 {
+		path = pos[1]
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		path = filepath.Join(home, ".engram", "engram.db")
+	}
+	st, err := openStore()
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	rep, err := importer.Engram(context.Background(), st, path, importer.Options{Trust: tr, DryRun: *dry, Project: *project, Log: c.err})
+	if err != nil {
+		return err
+	}
+	prefix := ""
+	if *dry {
+		prefix = "(dry run, nothing written) "
+	}
+	fmt.Fprintf(c.out, "%sread %d observations: imported %d, revised %d, already present %d\n",
+		prefix, rep.Read, rep.Imported, rep.Updated, rep.Duplicate)
+	fmt.Fprintf(c.out, "skipped: %d deleted, %d superseded, %d blocked by secret policy, %d invalid\n",
+		rep.SkippedDeleted, rep.SkippedSuperseded, rep.SkippedSecret, rep.SkippedInvalid)
+	if rep.Redacted > 0 {
+		fmt.Fprintf(c.out, "%d possible secret(s) were redacted while importing\n", rep.Redacted)
+	}
+	names := make([]string, 0, len(rep.Spaces))
+	for k := range rep.Spaces {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	for _, k := range names {
+		fmt.Fprintf(c.out, "  %-32s %d\n", k, rep.Spaces[k])
+	}
+	return nil
 }

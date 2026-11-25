@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"net/url"
 
 	_ "modernc.org/sqlite" // pure-Go SQLite driver: no C toolchain needed to build
@@ -29,4 +30,10 @@ func dsn(path string, writer bool) string {
 	}
 	u := url.URL{Scheme: "file", Path: path, RawQuery: q.Encode()}
 	return u.String()
+}
+
+// OpenReadOnlyDB opens a foreign SQLite file read-only (used by importers).
+func OpenReadOnlyDB(path string) (*sql.DB, error) {
+	u := url.URL{Scheme: "file", Path: path, RawQuery: "mode=ro&_pragma=busy_timeout(5000)"}
+	return sql.Open(driverName, u.String())
 }

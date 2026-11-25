@@ -1,6 +1,6 @@
 # Architecture decisions
 
-Status: v0.1 implemented (store, search, MCP server, CLI, Claude Code hook).
+Status: v0.1 implemented (store, search, MCP server, CLI, Claude Code hook, Engram importer).
 Each decision lists the evidence behind it. Numbers come from synthetic corpora
 of ~900-character memories on a 2 vCPU machine and should be read as relative,
 not absolute. `NOAH_SCALE=1000,10000 go test ./internal/search -run TestScale -v`

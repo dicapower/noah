@@ -31,6 +31,7 @@ Memories
 Maintenance
   doctor               check the database and look for stored secrets
   export               write memories as JSON lines
+  import engram [db]   copy your memories from Engram (default ~/.engram/engram.db)
   version              print the version
 
 Environment
@@ -78,6 +79,8 @@ func run(args []string, in io.Reader, out, errw io.Writer) int {
 		return c.doctor(rest)
 	case "export":
 		err = c.export(rest)
+	case "import":
+		err = c.importCmd(rest)
 	case "version", "--version", "-v":
 		fmt.Fprintln(out, "noah", version)
 	case "help", "--help", "-h":

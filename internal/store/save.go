@@ -50,6 +50,13 @@ func (s *Store) Save(ctx context.Context, in memory.Input) (SaveResult, error) {
 	hash := memory.Hash(content)
 	tags := strings.Join(in.Tags, " ")
 	now := s.now().UnixMilli()
+	created, updated := now, now
+	if !in.CreatedAt.IsZero() {
+		created = in.CreatedAt.UnixMilli()
+	}
+	if !in.UpdatedAt.IsZero() {
+		updated = in.UpdatedAt.UnixMilli()
+	}
 	pinned := b2i(in.Pinned)
 
 	tx, err := s.w.BeginTx(ctx, nil)
@@ -76,7 +83,7 @@ func (s *Store) Save(ctx context.Context, in memory.Input) (SaveResult, error) {
 				title=COALESCE(NULLIF(?,''), title), content=?, kind=COALESCE(NULLIF(?,''), kind),
 				tags=CASE WHEN ?='' THEN tags ELSE ? END, trust=?, pinned=pinned OR ?,
 				hash=?, revision=revision+1, redactions=?, updated_at=? WHERE id=?`,
-				title, content, in.Kind, tags, tags, string(in.Trust), pinned, hash, res.Redactions, now, id)
+				title, content, in.Kind, tags, tags, string(in.Trust), pinned, hash, res.Redactions, updated, id)
 			if err != nil {
 				return res, err
 			}
@@ -96,7 +103,7 @@ func (s *Store) Save(ctx context.Context, in memory.Input) (SaveResult, error) {
 			if in.Trust == memory.TrustUser {
 				trust = string(memory.TrustUser) // a human confirming a note raises its trust
 			}
-			if _, err := tx.ExecContext(ctx, `UPDATE memories SET updated_at=?, pinned=pinned OR ?, trust=? WHERE id=?`, now, pinned, trust, id); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE memories SET updated_at=MAX(updated_at,?), pinned=pinned OR ?, trust=? WHERE id=?`, updated, pinned, trust, id); err != nil {
 				return res, err
 			}
 			res.Duplicate = true
@@ -104,7 +111,7 @@ func (s *Store) Save(ctx context.Context, in memory.Input) (SaveResult, error) {
 			r, err := tx.ExecContext(ctx, `INSERT INTO memories
 				(space,title,content,kind,topic,tags,trust,pinned,hash,redactions,created_at,updated_at)
 				VALUES (?,?,?,?,NULLIF(?,''),?,?,?,?,?,?,?)`,
-				in.Space, newTitle, content, newKind, in.Topic, tags, string(in.Trust), pinned, hash, res.Redactions, now, now)
+				in.Space, newTitle, content, newKind, in.Topic, tags, string(in.Trust), pinned, hash, res.Redactions, created, updated)
 			if err != nil {
 				return res, err
 			}

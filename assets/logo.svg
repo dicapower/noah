@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="noah logo: Rottweiler silhouette">
+  <title>noah</title>
+  <rect width="512" height="512" rx="96" fill="#14181f"/>
+  <!-- Rottweiler head in profile, facing right: flat broad skull, square deep muzzle, hanging flews, thick neck -->
+  <path fill="#f2f4f8" d="
+    M 104 452
+    C 112 352 130 290 166 240
+    C 176 196 204 168 244 160
+    L 336 156
+    C 352 156 360 168 364 188
+    L 370 206
+    C 400 208 432 210 448 216
+    C 460 222 462 238 458 252
+    C 456 264 448 270 440 272
+    C 446 292 436 310 418 318
+    C 408 334 388 342 366 338
+    C 348 336 336 332 322 334
+    C 322 366 330 410 346 452 Z"/>
+  <!-- Drop ear: gap line separating it from the skull -->
+  <path d="M 214 176 C 236 232 262 258 296 262 C 304 232 306 200 300 168" fill="#14181f" stroke="#14181f" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 226 184 C 244 226 266 244 288 248 C 292 224 292 200 288 178 Z" fill="#f2f4f8" opacity="0.0"/>
+  <!-- Eye + brow -->
+  <ellipse cx="352" cy="214" rx="8" ry="6" fill="#14181f"/>
+  <!-- Nose -->
+  <path fill="#14181f" d="M 432 216 C 448 216 458 226 454 240 C 444 246 430 242 424 230 Z"/>
+  <!-- Mouth line with flew -->
+  <path d="M 440 274 C 410 282 380 284 356 276" stroke="#14181f" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- Collar and tag -->
+  <path fill="#e8a33d" d="M 122 388 C 190 410 270 410 332 390 L 340 424 C 266 448 184 448 116 428 Z"/>
+  <circle cx="228" cy="448" r="17" fill="#e8a33d"/>
+</svg>

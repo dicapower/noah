@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -96,6 +97,9 @@ type Input struct {
 	Tags    []string
 	Trust   Trust
 	Pinned  bool
+
+	// CreatedAt and UpdatedAt are optional; they let importers keep original dates.
+	CreatedAt, UpdatedAt time.Time
 }
 
 var (

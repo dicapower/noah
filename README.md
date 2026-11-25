@@ -1,86 +1,195 @@
-# noah
+<p align="center">
+  <img src="assets/logo.svg" alt="noah" width="140">
+</p>
 
-Persistent memory for AI coding agents. One static binary, local SQLite, no daemon, no network.
+<h1 align="center">noah</h1>
 
-Agents forget everything when a session ends. `noah` gives Claude Code, Cursor and any other
-[MCP](https://modelcontextprotocol.io) client a shared, searchable memory of your decisions,
-bug fixes and conventions, kept per project on your own machine.
+<p align="center"><b>Persistent memory for AI coding agents.</b><br>
+One file, runs locally, no account, no cloud, no background service.</p>
 
-> **Status: v0.1, pre-release.** The core works and is tested. See [Known limits](docs/ARCHITECTURE.md#known-limits).
+<p align="center"><a href="README.es.md">Leer en español</a> · <a href="docs/ARCHITECTURE.md">Architecture</a> · License: Apache-2.0</p>
 
-## Quick start
+---
+
+## Why
+
+Coding agents (Claude Code, Cursor, …) forget everything when a session ends. `noah` gives them a
+searchable notebook that lives on your machine: decisions you made, bugs you fixed, conventions
+you follow. The agent saves things as it works and finds them again in the next session, in the
+right project, without you pasting context.
+
+- **Private.** Everything stays in one SQLite file on your computer. Nothing is sent anywhere.
+- **Simple.** One binary. No server to run, no port to open, nothing to keep alive.
+- **Fast.** Searches take milliseconds; 10,000 memories fit in about 26 MB.
+- **Safe by design.** Secrets are redacted before they are stored, and a memory an agent writes can never override one you wrote.
+- **Per project.** Memories belong to the project you are in and never leak into another.
+
+> **Status: v0.1, pre-release.** It works and is tested, but it is young. Known limits are listed [at the end](#known-limits).
+
+## Install
+
+You need [Go 1.26+](https://go.dev/dl/) until binary releases are published.
 
 ```sh
-go install github.com/dicapower/noah/cmd/noah@latest   # or download a binary from Releases
+git clone https://github.com/dicapower/noah.git
+cd noah
+go build -o noah ./cmd/noah
+sudo mv noah /usr/local/bin/        # or any folder in your PATH
+noah version
+```
 
+(Once the repository is public: `go install github.com/dicapower/noah/cmd/noah@latest`.)
+
+It is pure Go with no C dependencies, so the same command builds on macOS, Linux and Windows.
+
+## Connect your agent (2 minutes)
+
+`noah setup` prints the exact commands for your machine. It never edits your configuration.
+
+### Claude Code
+
+```sh
+claude mcp add noah --scope user -- noah mcp
+```
+
+Optional but recommended: load recent memories at the start of every session. Add this to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "noah hook session-start" } ] }
+    ]
+  }
+}
+```
+
+### Cursor
+
+Add to `~/.cursor/mcp.json` (or `.cursor/mcp.json` inside a project):
+
+```json
+{ "mcpServers": { "noah": { "command": "noah", "args": ["mcp"] } } }
+```
+
+### Any other MCP client
+
+Run `noah mcp` as a stdio MCP server.
+
+Then just work. Ask your agent things like *"remember that we use Firebase Auth for login"* or
+*"what did we decide about the database?"*. The agent decides when to save and search using the
+tools below.
+
+## Moving from Engram
+
+Bring your existing memories with one command. Your Engram database is only read, from a temporary copy.
+
+```sh
+noah import engram --dry-run     # preview: counts per project, nothing is written
+noah import engram               # do it (default file: ~/.engram/engram.db)
+```
+
+Each Engram project becomes a noah project. Topic keys, types, pinned flags and original dates are kept; deleted and superseded entries are skipped; secrets found inside are redacted. Running it twice does not duplicate anything. Imported memories are marked as written by an agent; add `--trust user` if you want them protected from agent edits.
+
+## Using it from the terminal
+
+```sh
 noah save --kind decision --topic auth/provider "We use Firebase Auth with custom claims for roles"
 noah search "which provider handles login?"
-noah context
+noah search --all "docker deploy"        # across every project
+noah context                              # pinned + most recent memories of this project
+noah get 42
+noah forget 42
 ```
 
-Connect your agent (this prints the exact commands and never edits your config):
-
-```sh
-noah setup claude-code
-noah setup cursor
-```
+`--topic` is a stable name: saving again with the same topic updates the memory instead of creating a duplicate. `--pin` keeps a memory always in context.
 
 ## What the agent gets
 
-Six MCP tools, kept small because every tool description costs context on every request:
+Six tools, kept deliberately few because every tool description costs context on every request.
 
-| Tool | Purpose |
+| Tool | What it does |
 |---|---|
-| `mem_search` | Natural-language search, returns best matches with snippets |
-| `mem_save` | Save a memory; the same `topic` revises it instead of duplicating |
+| `mem_search` | Natural-language search; returns the best matches with a snippet |
+| `mem_save` | Save a memory; the same `topic` revises it |
 | `mem_get` | Read one memory in full |
 | `mem_context` | Pinned and most recent memories of this project |
 | `mem_forget` | Delete a memory that is wrong or obsolete |
 | `mem_spaces` | List projects and their sizes |
 
-With the optional Claude Code hook (`noah hook session-start`), recent memories are injected at the start of every session.
+## How projects work
 
-## How it works
+A memory belongs to a *space* (project), chosen in this order:
 
-- **Spaces.** Memory belongs to a project: the `NOAH_SPACE` variable, the nearest `.noah` file, the git root, or the folder name. The home directory maps to `_unscoped` so unrelated work never piles up under one project. Searches never cross projects unless asked (`scope: "all"`).
-- **Search.** SQLite FTS5 finds candidates (all terms first, any term if there are too few), then a small reranker in Go weighs relevance, term coverage, recency, trust and pinned notes. Accents are ignored, simple inflections match, identifiers like `ENG-123` match exactly.
-- **Concurrency.** WAL mode with one writer connection and a separate read pool, so several agents can read and write the same database at once.
-- **No sessions to leak.** There is no session start/end bookkeeping that can be left open.
+1. the `NOAH_SPACE` environment variable,
+2. the nearest `.noah` file (put a project name in it to override),
+3. the git repository root folder name,
+4. the current folder name.
 
-## Security model
+Your home folder and `/` map to `_unscoped`. Searches stay inside the current project unless you ask for all (`--all`, or `scope: "all"` from the agent). Run `noah space` to see which project you are in.
 
-Agent memory is an attack surface: anything an agent saves is read back into a future prompt.
+> If your agent starts MCP servers outside the project folder, set `NOAH_SPACE` in its MCP configuration.
 
-- **Secrets are redacted before they are stored** (API keys, tokens, private keys, passwords in URLs and assignments). Set `NOAH_SECRETS=block` to refuse instead, or `off` to disable. `noah doctor` scans existing memories.
-- **Trust levels.** Memories written by you (CLI) are `user`; memories written by an agent are `agent`. An agent cannot overwrite, pin or delete a `user` memory.
-- **Labelled context.** Injected memories are wrapped in a block that says they are reference data, not instructions, and shows who wrote each one. The closing tag cannot be forged from inside a memory.
-- **No listening port.** The agent starts `noah mcp` over stdio. There is no HTTP server for a web page to talk to.
-- The database file is created with mode `0600`.
+## Security
 
-## Commands
+Agent memory is an attack surface: whatever an agent saves is read back into a future prompt.
+
+- **Secrets never reach the database.** API keys, tokens, private keys and passwords in URLs are redacted on save. `NOAH_SECRETS=block` refuses instead; `off` disables. `noah doctor` scans what is already stored.
+- **Two trust levels.** What you save from the terminal is `user`; what an agent saves is `agent`. An agent cannot overwrite, pin or delete a `user` memory.
+- **Labelled context.** Injected memories are wrapped in a block that says they are reference notes, not instructions, and shows who wrote each. A memory cannot close that block from the inside.
+- **No network.** The agent launches `noah mcp` over stdio. There is no HTTP server for a web page to reach. The database file is created private (`0600`).
+
+## All commands
 
 ```
 noah mcp | setup | hook session-start        agent integration
 noah save | search | context | get | forget  memories
 noah spaces | space                          projects
+noah import engram                           migrate from Engram
 noah doctor | export | version               maintenance
 ```
 
-Environment: `NOAH_DB` (default `~/.noah/noah.db`), `NOAH_SPACE`, `NOAH_SECRETS`.
+`noah <command> -h` shows the flags. `noah export > backup.jsonl` writes everything as JSON lines.
+
+| Environment variable | Meaning | Default |
+|---|---|---|
+| `NOAH_DB` | database file | `~/.noah/noah.db` |
+| `NOAH_SPACE` | force the project | detected |
+| `NOAH_SECRETS` | `redact`, `block` or `off` | `redact` |
+
+## Troubleshooting
+
+- **The agent does not see the tools.** Restart the agent after adding the server and check the path with `which noah`; use the full path in the config if the agent does not inherit your `PATH`.
+- **Searches return nothing.** You may be in a different project than the one where you saved. Run `noah space`, `noah spaces`, or search with `--all`.
+- **Something looks wrong.** `noah doctor` checks database integrity, the search index and stored secrets.
+- **Start over.** Delete `~/.noah/noah.db` (back it up first with `noah export`).
 
 ## Performance
 
-On a 2 vCPU machine, 10,000 memories of ~900 characters: about 900 inserts/s, 26 MB, searches in 13-33 ms, and 50 of 50 natural-language questions answered correctly. At 100,000 memories searches take 94-280 ms. Full table, method and what was tried and rejected: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Synthetic memories of ~900 characters on a 2-vCPU machine:
+
+| Memories | Typical search | Inserts/s | Size | Natural-language questions answered |
+|---:|---:|---:|---:|---:|
+| 10,000 | 13–33 ms | ~900 | 26 MB | 50 / 50 |
+| 100,000 | 94–280 ms | ~860 | 259 MB | 50 / 50 |
+
+Method, comparisons and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Known limits
+
+- **Matches words, not meaning.** "What database did we choose?" will not find a note that only says "SQLite". Optional embeddings are planned.
+- **A word that appears in almost every memory is slow at very large sizes** (about 280 ms at 100,000 memories). Normal queries are much faster.
+- **No sync between machines.** Share with `noah export` and Git.
+- The numbers above come from synthetic data; results on real notes will vary.
 
 ## Development
 
 ```sh
-go test ./...
-NOAH_SCALE=1000,10000 go test ./internal/search -run TestScale -v   # scale benchmark
+go vet ./... && go test ./...
+NOAH_SCALE=1000,10000 go test ./internal/search -run TestScale -v    # scale benchmark
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./cmd/noah           # cross-compile
 ```
-
-Pure Go, no cgo: it cross-compiles to macOS, Linux and Windows with `CGO_ENABLED=0`.
 
 ## License
 
-Not yet chosen.
+Apache License 2.0 — Copyright 2026 DICA POWER OÜ. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
