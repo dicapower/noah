@@ -4,6 +4,9 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 
 ## Unreleased
 
+### Added
+- **Easy install and upgrade.** `install.sh` (one line, macOS and Linux, verifies the checksum, never uses `sudo`, same line upgrades), a Homebrew formula (`Formula/noah.rb`) and a Scoop manifest (`bucket/noah.json`). The release workflow regenerates the formula and manifest from each release's checksums, only for the latest release. `scripts/packaging.sh` does the generating.
+
 ### Changed
 - `noah version` now reports the right version also when noah is built without `-ldflags` (a plain `go build` in a tagged checkout, or `go install ...@vX.Y.Z`); before it printed `dev`.
 - README (English and Spanish): step-by-step upgrade (downloaded binary with checksum, source, `go install`) and a table with the flags of `save`, `search`, `context`, `stale` and `export`.

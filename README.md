@@ -28,32 +28,60 @@ right project, without you pasting context.
 
 ## Install
 
-You need [Go 1.26+](https://go.dev/dl/) until binary releases are published.
+Pick one. All of them install the same single binary (`noah`), with no other dependencies.
+
+**macOS and Linux, one line** (also used to upgrade):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/dicapower/noah/main/install.sh | sh
+```
+
+It downloads the latest release, verifies its checksum, and installs next to your existing `noah` (or in `/usr/local/bin`, or `~/.local/bin` if that is not writable). It never uses `sudo`; if the folder is not in your `PATH` it prints the line to add.
+
+**Homebrew** (macOS and Linux):
+
+```sh
+brew tap dicapower/noah https://github.com/dicapower/noah
+brew install dicapower/noah/noah
+```
+
+**Windows** ([Scoop](https://scoop.sh)):
+
+```powershell
+scoop bucket add noah https://github.com/dicapower/noah
+scoop install noah
+```
+
+**From source** (needs [Go 1.26+](https://go.dev/dl/)):
 
 ```sh
 git clone https://github.com/dicapower/noah.git
 cd noah
 go build -o noah ./cmd/noah
 sudo mv noah /usr/local/bin/        # or any folder in your PATH
-noah version
 ```
 
-(Once the repository is public: `go install github.com/dicapower/noah/cmd/noah@latest`, or download a ready-made binary from the Releases page. Every `v*` tag publishes binaries for Linux, macOS and Windows. See [CHANGELOG.md](CHANGELOG.md).)
+Or download a ready-made archive from the [Releases page](https://github.com/dicapower/noah/releases) (Linux, macOS and Windows; each release lists `SHA256SUMS`). Check it with `noah version`. See [CHANGELOG.md](CHANGELOG.md).
 
-It is pure Go with no C dependencies, so the same command builds on macOS, Linux and Windows.
+It is pure Go with no C dependencies, so the same code builds on macOS, Linux and Windows.
 
 ### Upgrading
 
-1. **Back up (optional but cheap).** `noah export > ~/noah-backup.jsonl` writes every memory as JSON lines. To keep the raw database too, copy `~/.noah/noah.db*` (three files while the database is open).
-2. **Get the new binary**, by whichever way you installed:
-   - *Downloaded binary:* take `noah-vX.Y.Z-<os>-<arch>.tar.gz` (`.zip` on Windows) from the [Releases page](https://github.com/dicapower/noah/releases), check it with `sha256sum -c SHA256SUMS --ignore-missing` (macOS: `shasum -a 256 -c SHA256SUMS --ignore-missing`), unpack it and replace the old `noah` with the new one. Close the agent first on Windows, which will not overwrite a running program.
-   - *Built from source:* `cd noah && git pull && go build -o noah ./cmd/noah`, then move it into your `PATH` as when you installed.
-   - *`go install`:* `go install github.com/dicapower/noah/cmd/noah@latest`.
-3. **Check it.** `noah version` prints the new version and `noah doctor` shows the schema version and checks integrity. The database migrates itself the first time the new binary opens it; migrations only add, and a database from a newer noah is refused rather than damaged.
-4. **Restart your agent** so it launches the new binary, and make sure its MCP config points to the file you just replaced (`which noah` shows the one in your `PATH`).
-5. **Read the [CHANGELOG](CHANGELOG.md)** for anything that changes behaviour. Run `noah stale` after a big upgrade to see which notes are flagged or unused.
+| You installed with | Upgrade with |
+|---|---|
+| the install script | run the same `curl … \| sh` line again |
+| Homebrew | `brew update && brew upgrade dicapower/noah/noah` |
+| Scoop | `scoop update noah` |
+| a downloaded archive | unpack the new one over the old `noah` (on Windows close your agent first) and check it with `shasum -a 256 -c SHA256SUMS --ignore-missing` |
+| source | `git pull && go build -o noah ./cmd/noah`, then replace the old binary |
 
-Nothing to reinstall in your agent's hooks: `noah setup` only prints the configuration, and the hooks call the same `noah` binary.
+Then:
+
+1. **Restart your agent** so it launches the new binary. A running agent keeps using the old one until it restarts, whatever you installed.
+2. Run `noah version` and `noah doctor`. The database migrates itself the first time the new binary opens it; migrations only add, and a database from a newer noah is refused rather than damaged.
+3. Skim the [CHANGELOG](CHANGELOG.md) for behaviour changes. If you want a copy first, `noah export > ~/noah-backup.jsonl` (cheap, and the only step you can skip).
+
+noah never updates itself: it makes no network connections by design. Nothing to reinstall in your agent's hooks, which call the same `noah` binary.
 
 ## Connect your agent (2 minutes)
 
@@ -202,6 +230,7 @@ noah doctor | stale | export | version       maintenance
 
 ## Troubleshooting
 
+- **`command not found: noah`.** The folder with the binary is not in your `PATH`. The install script prints the line to add; or run `which noah` / `echo $PATH`. Typing `./noah` from the folder that holds it always works. Do not paste commands with a trailing `# comment` into zsh: it does not treat `#` as a comment by default.
 - **The agent does not see the tools.** Restart the agent after adding the server and check the path with `which noah`; use the full path in the config if the agent does not inherit your `PATH`.
 - **Searches return nothing.** You may be in a different project than the one where you saved. Run `noah space`, `noah spaces`, or search with `--all`.
 - **Something looks wrong.** `noah doctor` checks database integrity, the search index and stored secrets.

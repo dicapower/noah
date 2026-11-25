@@ -48,3 +48,33 @@ jobs:
           else
             gh release create "$TAG" dist/* --title "noah $TAG" --notes-file notes.md
           fi
+  packaging:
+    # Keeps `brew install`/`brew upgrade` and Scoop pointing at the newest
+    # release: regenerates Formula/noah.rb and bucket/noah.json from the
+    # checksums of the files just published. Only for the latest release, so
+    # re-running an old tag cannot move the package backwards.
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Update Homebrew formula and Scoop manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}
+          latest=$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)
+          if [ "$TAG" != "$latest" ]; then echo "$TAG is not the latest release ($latest); leaving packaging alone"; exit 0; fi
+          curl -fsSL -o "$RUNNER_TEMP/SHA256SUMS" "https://github.com/${{ github.repository }}/releases/download/$TAG/SHA256SUMS"
+          sh scripts/packaging.sh "$TAG" "$RUNNER_TEMP/SHA256SUMS"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula bucket
+          if git diff --cached --quiet; then echo "packaging already up to date"; exit 0; fi
+          git commit -m "Packaging: noah $TAG"
+          for i in 1 2 3; do
+            git pull -q --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
