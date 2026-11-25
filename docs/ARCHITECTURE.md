@@ -97,3 +97,14 @@ Common-term search is on par (30 vs 25 ms at 10k). Engram did not finish the 50k
 - The default build uses the pure-Go SQLite driver; a cgo build tag (about 2x faster searches in earlier measurements) is not wired yet.
 - The project space comes from the directory the agent launches `noah mcp` in. Agents that start MCP servers outside the project directory need `NOAH_SPACE` or `--space`.
 - No multi-machine sync. Use `noah export` and Git for sharing.
+
+## Context management (v0.4)
+
+What reaches the agent unprompted is paid for in every turn and read as if it were true, so it is budgeted and treated as untrusted.
+
+- **Budgets, not counts.** Automatic context (session start, `mem_context`) and `mem_search` stop at a token budget (default 1,500; `NOAH_START_TOKENS`, `max_tokens`). Tokens are estimated at 3.5 characters each (about ±20%), enough for a budget without shipping a tokenizer. The best hit is always returned.
+- **Priority, not recency.** `Store.Context` orders pinned notes, then decisions/preferences/conventions/architecture/gotchas (they stay true), then everything else by recency. Recency alone lets the last chatty note push out a decision from last month.
+- **After compaction** the SessionStart hook fires again with source `compact`; noah reinjects the same prioritised context with a one-line notice. A PreCompact hook was considered and left out: Claude Code does not add a PreCompact hook's output to the conversation, so noah could not put anything in front of the model there. The Stop hook already asks the agent to save after long work, which is the moment that matters.
+- **Poisoning.** `memory.Suspicious` flags instruction-like text, download-and-run commands, links and invisible characters at save time (and once, retroactively, in migration v3). Flagged notes written by an agent or an external source are excluded from automatic injection but stay searchable with a warning; `noah stale` lists them. Invisible and bidirectional characters are stripped wherever memory text is shown. The detector is regex-based and will miss a determined attacker; its job is to make the ordinary cases visible and to keep them from being replayed on their own.
+- **Review.** `last_used_at` is set whenever a memory is returned to an agent. `noah stale` lists what has not been used or revised for 180 days (pinned notes excluded).
+- **Ranking.** Coverage is weighted by inverse document frequency among the FTS candidates and the title has its own weight, so a term present in almost every candidate ("producción") no longer counts as much as a rare one. `TestRecall` guards it.

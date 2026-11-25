@@ -110,14 +110,14 @@ noah forget 42
 
 ## Qué recibe el agente
 
-Seis herramientas, pocas a propósito porque cada descripción consume contexto en cada petición.
+Seis herramientas, pocas a propósito porque cada descripción consume contexto en cada petición (unos 1.000 tokens las seis, comprobado por un test). `mem_search` y `mem_context` aceptan `max_tokens` para que una respuesta nunca inunde la ventana.
 
 | Herramienta | Qué hace |
 |---|---|
 | `mem_search` | Búsqueda en lenguaje natural; devuelve las mejores coincidencias con un fragmento |
 | `mem_save` | Guarda una memoria; el mismo `topic` la revisa |
 | `mem_get` | Lee una memoria completa |
-| `mem_context` | Memorias fijadas y más recientes de este proyecto |
+| `mem_context` | Fijadas, luego decisiones y convenciones, luego las recientes, dentro de un presupuesto de tokens |
 | `mem_forget` | Borra una memoria errónea u obsoleta |
 | `mem_spaces` | Lista los proyectos y su tamaño |
 
@@ -152,6 +152,7 @@ La memoria de agentes es una superficie de ataque: lo que un agente guarda se vu
 
 - **Las credenciales no llegan a la base de datos.** Claves de API, tokens, claves privadas y contraseñas en URLs se tachan al guardar. `NOAH_SECRETS=block` rechaza en su lugar; `off` lo desactiva. `noah doctor` revisa lo ya guardado.
 - **Dos niveles de confianza.** Lo que guardas desde la terminal es `user`; lo que guarda un agente es `agent`. Un agente no puede sobrescribir, fijar ni borrar una memoria `user`.
+- **Notas marcadas.** Una nota que ordena a la IA ignorar sus reglas, ejecuta un comando de descargar-y-ejecutar, lleva un enlace u oculta caracteres recibe una marca `⚠`. Si la escribió un agente, se puede buscar (con aviso) pero nunca se inyecta sola en una sesión. `noah stale` las lista para revisarlas. Es una heurística: hace visibles los casos comunes, no todos los ataques.
 - **Contexto etiquetado.** Las memorias inyectadas van en un bloque que indica que son notas de referencia, no instrucciones, y quién escribió cada una. Una memoria no puede cerrar ese bloque desde dentro.
 - **Sin red.** El agente lanza `noah mcp` por stdio. No hay servidor HTTP al que una web pueda acceder. El archivo de base de datos se crea privado (`0600`).
 
@@ -162,7 +163,7 @@ noah mcp | setup | hook session-start|stop   integración con agentes
 noah save | search | context | get | forget  memorias
 noah spaces | space | move                   proyectos
 noah import engram                           migrar desde Engram
-noah doctor | export | version               mantenimiento
+noah doctor | stale | export | version       mantenimiento
 ```
 
 `noah <comando> -h` muestra los flags. `noah export > backup.jsonl` guarda todo en JSON lines.
@@ -172,6 +173,7 @@ noah doctor | export | version               mantenimiento
 | `NOAH_DB` | archivo de base de datos | `~/.noah/noah.db` |
 | `NOAH_SPACE` | forzar el proyecto | detectado |
 | `NOAH_SECRETS` | `redact`, `block` u `off` | `redact` |
+| `NOAH_START_TOKENS` | tope de tamaño del contexto inyectado al empezar la sesión | `1500` |
 
 ## Problemas frecuentes
 

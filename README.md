@@ -112,14 +112,14 @@ noah forget 42
 
 ## What the agent gets
 
-Six tools, kept deliberately few because every tool description costs context on every request.
+Six tools, kept deliberately few because every tool description costs context on every request (about 1,000 tokens for all six, enforced by a test). `mem_search` and `mem_context` accept `max_tokens` so an answer never floods the window.
 
 | Tool | What it does |
 |---|---|
 | `mem_search` | Natural-language search; returns the best matches with a snippet |
 | `mem_save` | Save a memory; the same `topic` revises it |
 | `mem_get` | Read one memory in full |
-| `mem_context` | Pinned and most recent memories of this project |
+| `mem_context` | Pinned notes, then decisions and conventions, then recent ones, within a token budget |
 | `mem_forget` | Delete a memory that is wrong or obsolete |
 | `mem_spaces` | List projects and their sizes |
 
@@ -154,6 +154,7 @@ Agent memory is an attack surface: whatever an agent saves is read back into a f
 
 - **Secrets never reach the database.** API keys, tokens, private keys and passwords in URLs are redacted on save. `NOAH_SECRETS=block` refuses instead; `off` disables. `noah doctor` scans what is already stored.
 - **Two trust levels.** What you save from the terminal is `user`; what an agent saves is `agent`. An agent cannot overwrite, pin or delete a `user` memory.
+- **Flagged notes.** A note that tells the AI to ignore its rules, runs a download-and-execute command, carries a link or hides characters gets a `⚠` flag. If an agent wrote it, it is searchable (with a warning) but never injected into a session on its own. `noah stale` lists them for review. This is a heuristic: it makes the common cases visible, not every attack.
 - **Labelled context.** Injected memories are wrapped in a block that says they are reference notes, not instructions, and shows who wrote each. A memory cannot close that block from the inside.
 - **No network.** The agent launches `noah mcp` over stdio. There is no HTTP server for a web page to reach. The database file is created private (`0600`).
 
@@ -164,7 +165,7 @@ noah mcp | setup | hook session-start|stop   agent integration
 noah save | search | context | get | forget  memories
 noah spaces | space | move                   projects
 noah import engram                           migrate from Engram
-noah doctor | export | version               maintenance
+noah doctor | stale | export | version       maintenance
 ```
 
 `noah <command> -h` shows the flags. `noah export > backup.jsonl` writes everything as JSON lines.
@@ -174,6 +175,7 @@ noah doctor | export | version               maintenance
 | `NOAH_DB` | database file | `~/.noah/noah.db` |
 | `NOAH_SPACE` | force the project | detected |
 | `NOAH_SECRETS` | `redact`, `block` or `off` | `redact` |
+| `NOAH_START_TOKENS` | size cap of the context injected at session start | `1500` |
 
 ## Troubleshooting
 
@@ -205,6 +207,7 @@ Method, comparisons and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHIT
 
 ```sh
 go vet ./... && go test ./...
+NOAH_RECALL_N=10000 go test ./internal/search -run TestRecall -v     # search-quality test
 NOAH_SCALE=1000,10000 go test ./internal/search -run TestScale -v    # scale benchmark
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./cmd/noah           # cross-compile
 ```
