@@ -124,3 +124,44 @@ func TestNoUsableTermsAndNoMatch(t *testing.T) {
 		t.Fatalf("operators must be neutralised: %v", err)
 	}
 }
+
+func TestClearWinnerIsNotPaddedWithNoise(t *testing.T) {
+	s := seed(t)
+	ctx := context.Background()
+	for i, c := range []string{
+		"The build works fine on the staging machine",
+		"This script works only with Node 20",
+		"Cache invalidation works through a version key",
+	} {
+		_, err := s.Save(ctx, memory.Input{Space: "app", Title: "Filler " + string(rune('A'+i)), Content: c})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err := s.Save(ctx, memory.Input{Space: "app", Title: "Zephyr probe", Content: "zephyr probe works from the agent client"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hits, err := search.Run(ctx, s, "zephyr probe works from the agent", search.Options{Space: "app"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 || hits[0].Memory.Title != "Zephyr probe" {
+		var got []string
+		for _, h := range hits {
+			got = append(got, h.Memory.Title)
+		}
+		t.Fatalf("want only the real match, got %v", got)
+	}
+}
+
+func TestVagueQueryStillReturnsSeveral(t *testing.T) {
+	s := seed(t)
+	hits, err := search.Run(context.Background(), s, "invoices", search.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) < 2 {
+		t.Fatalf("a vague one-word query should keep every comparable match, got %d", len(hits))
+	}
+}

@@ -41,6 +41,8 @@ type Hit struct {
 	Matched int           `json:"matched_terms"`
 	Total   int           `json:"query_terms"`
 	Snippet string        `json:"snippet"`
+
+	rel float64 // query-dependent part of the score
 }
 
 // Weights of the final score; they sum to 1.
@@ -51,6 +53,11 @@ const (
 	wTrust    = 0.10
 	wPinned   = 0.08
 	halfLife  = 90.0 // days after which the recency signal has decayed to 1/e
+
+	// minRelevance drops a hit whose query-dependent relevance (BM25 share plus
+	// term coverage) is below this fraction of the best hit's. Recency, trust and
+	// pinned only order hits that already match; they never keep a weak one alive.
+	minRelevance = 0.4
 )
 
 // Run searches for q and returns up to opt.Limit hits, best first.
@@ -125,8 +132,9 @@ func rerank(cands []memory.Scored, stems []string, opt Options) []Hit {
 		if m.Pinned {
 			pin = 1
 		}
-		score := wBM25*bm + wCoverage*cov + wRecency*rec + wTrust*m.Trust.Rank() + wPinned*pin
-		hits = append(hits, Hit{Memory: m, Score: score, Matched: matched, Total: len(stems), Snippet: snippet(m.Content, stems)})
+		rel := wBM25*bm + wCoverage*cov
+		score := rel + wRecency*rec + wTrust*m.Trust.Rank() + wPinned*pin
+		hits = append(hits, Hit{Memory: m, Score: score, rel: rel, Matched: matched, Total: len(stems), Snippet: snippet(m.Content, stems)})
 	}
 	sort.SliceStable(hits, func(i, j int) bool {
 		if hits[i].Score != hits[j].Score {
@@ -134,6 +142,17 @@ func rerank(cands []memory.Scored, stems []string, opt Options) []Hit {
 		}
 		return hits[i].Memory.ID > hits[j].Memory.ID
 	})
+	bestRel := 0.0
+	for _, h := range hits {
+		bestRel = math.Max(bestRel, h.rel)
+	}
+	kept := hits[:0]
+	for _, h := range hits {
+		if h.rel >= minRelevance*bestRel {
+			kept = append(kept, h)
+		}
+	}
+	hits = kept
 	if len(hits) > opt.Limit {
 		hits = hits[:opt.Limit]
 	}
