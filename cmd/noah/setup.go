@@ -90,16 +90,29 @@ func (c *cli) hook(args []string) int {
 	}
 	defer st.Close()
 	space := memory.ResolveSpace(cwd)
-	ms, err := st.Recent(context.Background(), space, 12)
+	// Start-up context is capped (NOAH_START_TOKENS, default 1500): the more a
+	// session starts with, the less of the window is left for the work, and the
+	// agent can always search for the rest. Pinned notes and decisions come
+	// first; recent notes only fill what is left.
+	tokens := startTokens()
+	ms, err := st.Context(context.Background(), space, 12)
 	if err != nil {
 		fmt.Fprintln(c.err, "noah:", err)
 		return 0
 	}
-	glob, _ := st.Recent(context.Background(), memory.Global, 6)
+	glob, _ := st.Context(context.Background(), memory.Global, 6)
+	budget := memory.CharsForTokens(tokens) * 2 / 3 // StartContext adds half again for global notes
 	_ = json.NewEncoder(c.out).Encode(map[string]any{"hookSpecificOutput": map[string]any{
 		"hookEventName":     "SessionStart",
-		"additionalContext": hook.StartContext(payload.Source, space, ms, glob, 4000),
+		"additionalContext": hook.StartContext(payload.Source, space, ms, glob, budget),
 	}})
+	// They were offered to the agent, so they count as used (an upper bound:
+	// the last few may not have fit the budget).
+	ids := make([]int64, 0, len(ms)+len(glob))
+	for _, m := range append(append([]memory.Memory{}, ms...), glob...) {
+		ids = append(ids, m.ID)
+	}
+	_ = st.Touch(context.Background(), ids...)
 	return 0
 }
 
@@ -124,4 +137,12 @@ func (c *cli) hookStop(raw []byte) int {
 	}
 	_ = json.NewEncoder(c.out).Encode(map[string]any{"decision": "block", "reason": reason})
 	return 0
+}
+
+// startTokens is the token budget of the SessionStart context.
+func startTokens() int {
+	if v, err := strconv.Atoi(os.Getenv("NOAH_START_TOKENS")); err == nil && v >= 200 {
+		return v
+	}
+	return 1500
 }

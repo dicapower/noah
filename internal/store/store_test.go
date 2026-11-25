@@ -279,7 +279,7 @@ func TestMigrationToV2KeepsDataAndNeverReusesIDs(t *testing.T) {
 	if c, _ := s.Candidates(ctx, "p", "", `"uniqueword2"*`, 5); len(c) != 1 || c[0].Memory.ID != 2 {
 		t.Fatalf("search index lost after upgrade: %+v", c)
 	}
-	if rep, _ := s.Check(ctx); !rep.IndexOK || rep.Memories != 3 || rep.SchemaVersion != 2 {
+	if rep, _ := s.Check(ctx); !rep.IndexOK || rep.Memories != 3 || rep.SchemaVersion != len(migrations) {
 		t.Fatalf("doctor after upgrade: %+v", rep)
 	}
 	if err := s.Forget(ctx, "", 3); err != nil {

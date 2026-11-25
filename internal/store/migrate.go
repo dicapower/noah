@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+
+	"github.com/dicapower/noah/internal/memory"
 )
 
 // migrations are applied in order; the index+1 is stored in PRAGMA user_version.
@@ -88,6 +91,43 @@ CREATE TRIGGER memories_au AFTER UPDATE ON memories BEGIN
 	INSERT INTO memories_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
 END;
 `,
+	// v3: when a memory was last handed to an agent (for review of stale notes)
+	// and the flags raised by memory.Suspicious. Existing rows are re-flagged on
+	// the first open after upgrading (see Store.reflag).
+	`
+ALTER TABLE memories ADD COLUMN last_used_at INTEGER;
+ALTER TABLE memories ADD COLUMN flags TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_memories_used ON memories(space, last_used_at);
+`,
+}
+
+func backfillFlags(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `SELECT id, title, content FROM memories`)
+	if err != nil {
+		return err
+	}
+	flags := map[int64]string{}
+	for rows.Next() {
+		var id int64
+		var title, content string
+		if err := rows.Scan(&id, &title, &content); err != nil {
+			rows.Close()
+			return err
+		}
+		if f := memory.Suspicious(title, content); len(f) > 0 {
+			flags[id] = strings.Join(f, " ")
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for id, f := range flags {
+		if _, err := tx.ExecContext(ctx, `UPDATE memories SET flags=? WHERE id=?`, f, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
@@ -106,6 +146,12 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, migrations[i]); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("migration %d: %w", i+1, err)
+		}
+		if i == 2 { // v3 adds flags: raise them for the memories that already exist
+			if err := backfillFlags(ctx, tx); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("migration 3: %w", err)
+			}
 		}
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
 			tx.Rollback()

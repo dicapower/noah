@@ -67,6 +67,7 @@ func New(cfg Config) *server.MCPServer {
 		mcp.WithDescription("Search saved memories with a natural-language question. Returns the best matches with snippets."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("A question or a few keywords.")),
 		mcp.WithNumber("limit", mcp.Description("Results to return (default 8, max 25).")),
+		mcp.WithNumber("max_tokens", mcp.Description("Cap the answer at about this many tokens (default 1500).")),
 		mcp.WithString("kind", mcp.Description("Only this kind.")),
 		mcp.WithString("scope", mcp.Description("\"project\" (default) or \"all\" spaces."), mcp.Enum("project", "all")),
 		spaceOpt,
@@ -81,8 +82,9 @@ func New(cfg Config) *server.MCPServer {
 	), h.get)
 
 	s.AddTool(mcp.NewTool("mem_context",
-		mcp.WithDescription("Pinned and most recent memories of this project. Use at the start of a session."),
+		mcp.WithDescription("Pinned memories, then decisions and conventions, then the most recent, for this project. Use at the start of a session."),
 		mcp.WithNumber("limit", mcp.Description("Memories to include (default 12, max 40).")),
+		mcp.WithNumber("max_tokens", mcp.Description("Cap the answer at about this many tokens (default 1500).")),
 		spaceOpt,
 		mcp.WithReadOnlyHintAnnotation(true),
 	), h.context)
@@ -180,8 +182,26 @@ func (h *handler) search(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	if err != nil {
 		return fail(err)
 	}
-	return mcp.NewToolResultText(FormatHits(hits, ShowSpace(hits, space))), nil
+	out, shown := FormatHitsLimit(hits, ShowSpace(hits, space), clamp(req.GetInt("max_tokens", DefaultMaxTokens), 100, 20000))
+	h.touch(ctx, idsOf(hits[:shown]))
+	return mcp.NewToolResultText(out), nil
 }
+
+// DefaultMaxTokens is the budget of mem_search and mem_context when the agent
+// does not pass max_tokens.
+const DefaultMaxTokens = 1500
+
+func idsOf(hits []search.Hit) []int64 {
+	ids := make([]int64, 0, len(hits))
+	for _, h := range hits {
+		ids = append(ids, h.Memory.ID)
+	}
+	return ids
+}
+
+// touch records that memories were handed to the agent. Failing to record a
+// use must never fail the call, so errors are dropped.
+func (h *handler) touch(ctx context.Context, ids []int64) { _ = h.st.Touch(ctx, ids...) }
 
 func (h *handler) get(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	id, err := req.RequireInt("id")
@@ -196,6 +216,7 @@ func (h *handler) get(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if err != nil {
 		return fail(err)
 	}
+	h.touch(ctx, []int64{m.ID})
 	return mcp.NewToolResultText(FormatMemory(m)), nil
 }
 
@@ -204,15 +225,9 @@ func (h *handler) context(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if err != nil {
 		return fail(err)
 	}
-	ms, err := h.st.Recent(ctx, space, clamp(req.GetInt("limit", 12), 1, 40))
+	out, err := BuildContext(ctx, h.st, space, clamp(req.GetInt("limit", 12), 1, 40), clamp(req.GetInt("max_tokens", DefaultMaxTokens), 100, 20000))
 	if err != nil {
 		return fail(err)
-	}
-	out := memory.RenderContext(space, ms, 6000)
-	if space != memory.Global {
-		if gm, err := h.st.Recent(ctx, memory.Global, 6); err == nil {
-			out += memory.RenderContext(memory.Global, gm, 3000)
-		}
 	}
 	if out == "" {
 		out = fmt.Sprintf("No memories saved yet for %q.", space)
@@ -270,4 +285,36 @@ func clamp(v, lo, hi int) int {
 		return hi
 	}
 	return v
+}
+
+// BuildContext renders the memories worth putting in an agent's context for a
+// space: pinned first, then decisions and conventions, then the most recent,
+// with the global space filling about 30% of the budget. Memories that did not
+// fit are not marked as used. It returns "" when there is nothing to show.
+func BuildContext(ctx context.Context, st *store.Store, space string, limit, maxTokens int) (string, error) {
+	ms, err := st.Context(ctx, space, limit)
+	if err != nil {
+		return "", err
+	}
+	chars := memory.CharsForTokens(maxTokens)
+	projectChars := chars
+	if space != memory.Global {
+		projectChars = chars * 7 / 10
+	}
+	out, n := memory.RenderContextN(space, ms, projectChars)
+	used := make([]int64, 0, len(ms))
+	for _, m := range ms[:n] {
+		used = append(used, m.ID)
+	}
+	if space != memory.Global {
+		if gm, err := st.Context(ctx, memory.Global, 6); err == nil && chars-len(out) > 200 {
+			g, gn := memory.RenderContextN(memory.Global, gm, chars-len(out))
+			out += g
+			for _, m := range gm[:gn] {
+				used = append(used, m.ID)
+			}
+		}
+	}
+	_ = st.Touch(ctx, used...)
+	return out, nil
 }

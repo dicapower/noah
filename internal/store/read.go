@@ -5,21 +5,22 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/dicapower/noah/internal/memory"
 )
 
 const cols = `m.id, m.space, m.title, m.content, m.kind, COALESCE(m.topic,''), m.tags, m.trust,
-	m.pinned, m.revision, m.redactions, m.created_at, m.updated_at`
+	m.pinned, m.revision, m.redactions, m.created_at, m.updated_at, COALESCE(m.last_used_at,0), m.flags`
 
 type scanner interface{ Scan(dest ...any) error }
 
 func scanMemory(sc scanner, extra ...any) (memory.Memory, error) {
 	var m memory.Memory
-	var tags, trust string
+	var tags, trust, flags string
 	var pinned int
 	dest := append([]any{&m.ID, &m.Space, &m.Title, &m.Content, &m.Kind, &m.Topic, &tags, &trust,
-		&pinned, &m.Revision, &m.Redactions, &m.CreatedAt, &m.UpdatedAt}, extra...)
+		&pinned, &m.Revision, &m.Redactions, &m.CreatedAt, &m.UpdatedAt, &m.LastUsedAt, &flags}, extra...)
 	if err := sc.Scan(dest...); err != nil {
 		return m, err
 	}
@@ -27,6 +28,9 @@ func scanMemory(sc scanner, extra ...any) (memory.Memory, error) {
 	m.Pinned = pinned != 0
 	if tags != "" {
 		m.Tags = strings.Fields(tags)
+	}
+	if flags != "" {
+		m.Flags = strings.Fields(flags)
 	}
 	return m, nil
 }
@@ -157,6 +161,106 @@ func (s *Store) Candidates(ctx context.Context, space, kind, match string, limit
 // Recent returns pinned memories first, then the most recently updated.
 func (s *Store) Recent(ctx context.Context, space string, limit int) ([]memory.Memory, error) {
 	return s.list(ctx, space, "", limit, 0)
+}
+
+// Context returns what is worth putting in an agent's context unprompted:
+// pinned memories first, then decisions, preferences and conventions (the
+// kinds that stay true), then everything else by recency. Notes flagged as
+// suspicious that the user did not write are left out (see memory.Injectable).
+func (s *Store) Context(ctx context.Context, space string, limit int) ([]memory.Memory, error) {
+	kinds := "'" + strings.Join(memory.PriorityKinds, "','") + "'"
+	q := `SELECT ` + cols + ` FROM memories m WHERE (m.flags='' OR m.trust='user')`
+	var args []any
+	if space != "" {
+		q += ` AND m.space=?`
+		args = append(args, space)
+	}
+	q += ` ORDER BY m.pinned DESC, (m.kind IN (` + kinds + `)) DESC, m.updated_at DESC, m.id DESC LIMIT ?`
+	args = append(args, limit)
+	rows, err := s.r.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []memory.Memory
+	for rows.Next() {
+		m, err := scanMemory(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// Touch records that the memories were just handed to an agent. It is best
+// effort: callers ignore the error, because failing to note a use must never
+// fail a search.
+func (s *Store) Touch(ctx context.Context, ids ...int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	ph := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, s.now().UnixMilli())
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	_, err := s.w.ExecContext(ctx, `UPDATE memories SET last_used_at=? WHERE id IN (`+ph+`)`, args...)
+	return err
+}
+
+// Stale returns unpinned memories not used or revised since cutoff, least
+// recently used first. Memories never used count from their last update.
+func (s *Store) Stale(ctx context.Context, space string, cutoff time.Time, limit int) ([]memory.Memory, error) {
+	q := `SELECT ` + cols + ` FROM memories m WHERE m.pinned=0 AND MAX(COALESCE(m.last_used_at,0), m.updated_at) < ?`
+	args := []any{cutoff.UnixMilli()}
+	if space != "" {
+		q += ` AND m.space=?`
+		args = append(args, space)
+	}
+	q += ` ORDER BY MAX(COALESCE(m.last_used_at,0), m.updated_at) ASC, m.id ASC LIMIT ?`
+	args = append(args, limit)
+	rows, err := s.r.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []memory.Memory
+	for rows.Next() {
+		m, err := scanMemory(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// Flagged returns memories raised by memory.Suspicious, newest first.
+func (s *Store) Flagged(ctx context.Context, space string, limit int) ([]memory.Memory, error) {
+	q := `SELECT ` + cols + ` FROM memories m WHERE m.flags<>''`
+	var args []any
+	if space != "" {
+		q += ` AND m.space=?`
+		args = append(args, space)
+	}
+	q += ` ORDER BY m.updated_at DESC, m.id DESC LIMIT ?`
+	args = append(args, limit)
+	rows, err := s.r.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []memory.Memory
+	for rows.Next() {
+		m, err := scanMemory(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
 }
 
 // List pages through memories, newest first (pinned first).

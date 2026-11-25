@@ -78,6 +78,10 @@ type Memory struct {
 	Redactions int      `json:"redactions,omitempty"`
 	CreatedAt  int64    `json:"created_at"` // unix milliseconds
 	UpdatedAt  int64    `json:"updated_at"` // unix milliseconds
+	// LastUsedAt is when the memory was last returned to an agent (search hit,
+	// mem_get or automatic injection); 0 if never. Flags are raised by Suspicious.
+	LastUsedAt int64    `json:"last_used_at,omitempty"`
+	Flags      []string `json:"flags,omitempty"`
 }
 
 // Scored is a search candidate: a memory and its BM25 score (lower is better,
@@ -173,6 +177,10 @@ func cleanTags(in []string) ([]string, error) {
 	}
 	return out, nil
 }
+
+// PriorityKinds are the kinds that stay true longest; automatic injection puts
+// them ahead of ordinary notes however old they are.
+var PriorityKinds = []string{"decision", "preference", "convention", "architecture", "gotcha"}
 
 // DefaultKind is the kind given to a new memory that does not name one.
 const DefaultKind = "note"

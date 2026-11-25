@@ -31,6 +31,7 @@ Memories
   space                print the space for the current directory
 
 Maintenance
+  stale                list notes nobody has used for months and notes flagged as suspicious
   doctor               check the database and look for stored secrets
   export               write memories as JSON lines
   import engram [db]   copy your memories from Engram (default ~/.engram/engram.db)
@@ -40,6 +41,7 @@ Environment
   NOAH_DB        database file           (default ~/.noah/noah.db)
   NOAH_SPACE     force the project space (default: from .noah file, git root or folder)
   NOAH_SECRETS   redact | block | off    (default redact)
+  NOAH_START_TOKENS  size cap of the session-start context (default 1500)
 
 Run "noah <command> -h" for the flags of a command.
 `
@@ -77,6 +79,8 @@ func run(args []string, in io.Reader, out, errw io.Writer) int {
 		err = c.spaces(rest)
 	case "space":
 		err = c.space(rest)
+	case "stale":
+		err = c.stale(rest)
 	case "doctor":
 		return c.doctor(rest)
 	case "export":

@@ -183,6 +183,7 @@ func (c *cli) context(args []string) error {
 	fs := c.flags("context")
 	space := fs.String("space", "", "project space")
 	limit := fs.Int("limit", 12, "memories")
+	maxTokens := fs.Int("max-tokens", mcpserver.DefaultMaxTokens, "cap the output at about this many tokens")
 	if _, err := parse(fs, args); err != nil {
 		return err
 	}
@@ -195,15 +196,9 @@ func (c *cli) context(args []string) error {
 		return err
 	}
 	defer st.Close()
-	ms, err := st.Recent(context.Background(), sp, *limit)
+	out, err := mcpserver.BuildContext(context.Background(), st, sp, *limit, *maxTokens)
 	if err != nil {
 		return err
-	}
-	out := memory.RenderContext(sp, ms, 6000)
-	if sp != memory.Global {
-		if gm, err := st.Recent(context.Background(), memory.Global, 6); err == nil {
-			out += memory.RenderContext(memory.Global, gm, 3000)
-		}
 	}
 	if out != "" {
 		fmt.Fprint(c.out, out)
@@ -471,5 +466,64 @@ func (c *cli) move(args []string) error {
 		return err
 	}
 	fmt.Fprintf(c.out, "#%d is now in %s\n", m.ID, m.Space)
+	return nil
+}
+
+// stale lists what deserves a human review: memories nobody has used for a
+// long time (candidates to delete or rewrite) and memories flagged as
+// suspicious (never replayed into sessions automatically, but still stored).
+func (c *cli) stale(args []string) error {
+	fs := c.flags("stale")
+	space := fs.String("space", "", "only this space (default: all)")
+	days := fs.Int("days", 180, "not used or revised for this many days")
+	limit := fs.Int("limit", 30, "most entries per list")
+	if _, err := parse(fs, args); err != nil {
+		return err
+	}
+	sp := ""
+	if *space != "" {
+		var err error
+		if sp, err = currentSpace(*space); err != nil {
+			return err
+		}
+	}
+	st, err := openStore()
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	ctx := context.Background()
+	old, err := st.Stale(ctx, sp, time.Now().AddDate(0, 0, -*days), *limit)
+	if err != nil {
+		return err
+	}
+	flagged, err := st.Flagged(ctx, sp, *limit)
+	if err != nil {
+		return err
+	}
+	line := func(m memory.Memory) {
+		seen := m.UpdatedAt
+		if m.LastUsedAt > seen {
+			seen = m.LastUsedAt
+		}
+		fmt.Fprintf(c.out, "  #%-5d %-24s %-10s %-8s last seen %s  %s\n", m.ID, m.Space, m.Kind, m.Trust,
+			time.UnixMilli(seen).UTC().Format("2006-01-02"), memory.Sanitize(m.Title, 70))
+	}
+	fmt.Fprintf(c.out, "Not used or revised in %d days (%d shown; pinned notes are never listed):\n", *days, len(old))
+	for _, m := range old {
+		line(m)
+	}
+	if len(old) == 0 {
+		fmt.Fprintln(c.out, "  none")
+	}
+	fmt.Fprintf(c.out, "\nFlagged as suspicious (%d shown; they are not injected automatically unless you wrote them):\n", len(flagged))
+	for _, m := range flagged {
+		line(m)
+		fmt.Fprintf(c.out, "         ⚠ %s\n", strings.Join(m.Flags, ", "))
+	}
+	if len(flagged) == 0 {
+		fmt.Fprintln(c.out, "  none")
+	}
+	fmt.Fprintln(c.out, "\nReview with: noah get <id>   ·   remove with: noah forget <id>")
 	return nil
 }

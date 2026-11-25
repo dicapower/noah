@@ -48,6 +48,7 @@ func (s *Store) Save(ctx context.Context, in memory.Input) (SaveResult, error) {
 		newKind = memory.DefaultKind
 	}
 	hash := memory.Hash(content)
+	flagsOf := func(t string) string { return strings.Join(memory.Suspicious(t, content), " ") }
 	tags := strings.Join(in.Tags, " ")
 	now := s.now().UnixMilli()
 	created, updated := now, now
@@ -82,8 +83,8 @@ func (s *Store) Save(ctx context.Context, in memory.Input) (SaveResult, error) {
 			_, err = tx.ExecContext(ctx, `UPDATE memories SET
 				title=COALESCE(NULLIF(?,''), title), content=?, kind=COALESCE(NULLIF(?,''), kind),
 				tags=CASE WHEN ?='' THEN tags ELSE ? END, trust=?, pinned=pinned OR ?,
-				hash=?, revision=revision+1, redactions=?, updated_at=? WHERE id=?`,
-				title, content, in.Kind, tags, tags, string(in.Trust), pinned, hash, res.Redactions, updated, id)
+				hash=?, revision=revision+1, redactions=?, updated_at=?, flags=? WHERE id=?`,
+				title, content, in.Kind, tags, tags, string(in.Trust), pinned, hash, res.Redactions, updated, flagsOf(title), id)
 			if err != nil {
 				return res, err
 			}
@@ -109,9 +110,9 @@ func (s *Store) Save(ctx context.Context, in memory.Input) (SaveResult, error) {
 			res.Duplicate = true
 		case errors.Is(err, sql.ErrNoRows):
 			r, err := tx.ExecContext(ctx, `INSERT INTO memories
-				(space,title,content,kind,topic,tags,trust,pinned,hash,redactions,created_at,updated_at)
-				VALUES (?,?,?,?,NULLIF(?,''),?,?,?,?,?,?,?)`,
-				in.Space, newTitle, content, newKind, in.Topic, tags, string(in.Trust), pinned, hash, res.Redactions, created, updated)
+				(space,title,content,kind,topic,tags,trust,pinned,hash,redactions,created_at,updated_at,flags)
+				VALUES (?,?,?,?,NULLIF(?,''),?,?,?,?,?,?,?,?)`,
+				in.Space, newTitle, content, newKind, in.Topic, tags, string(in.Trust), pinned, hash, res.Redactions, created, updated, flagsOf(newTitle))
 			if err != nil {
 				return res, err
 			}
