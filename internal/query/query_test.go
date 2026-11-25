@@ -51,3 +51,20 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+func TestStemKeepsIdentifiersWhole(t *testing.T) {
+	for _, w := range []string{"zorblax12", "ticket123", "sha256", "v2", "eng1234"} {
+		if got := stem(w); got != w {
+			t.Errorf("stem(%q) = %q; identifiers with digits must not be trimmed", w, got)
+		}
+	}
+	if got := stem("invoices"); got != "invoic" {
+		t.Errorf("plain words are still stemmed, got %q", got)
+	}
+}
+
+func TestMatchIdentifiersAreExact(t *testing.T) {
+	if got := Match("fix ENG-123 invoices", "any"); got != `"fix"* OR "eng"* OR "123" OR "invoic"*` {
+		t.Errorf("got %s", got)
+	}
+}

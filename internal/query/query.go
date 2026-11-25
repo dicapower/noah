@@ -88,6 +88,11 @@ func Terms(q string) []string {
 // heuristic, not a linguistic stemmer: short words are kept whole.
 func stem(w string) string {
 	r := []rune(w)
+	// Identifiers (ticket-123, v2, sha1, zorblax12) must match exactly: trimming
+	// them would make ENG-123 match ENG-12 and every other number with that prefix.
+	if hasDigit(w) {
+		return w
+	}
 	switch {
 	case len(r) >= 9:
 		return string(r[:len(r)-3])
@@ -109,8 +114,13 @@ func Match(q, mode string) string {
 	parts := make([]string, 0, len(terms))
 	for _, t := range terms {
 		s := stem(t)
-		// Quote to neutralise FTS5 operators, then add the prefix star.
-		parts = append(parts, `"`+strings.ReplaceAll(s, `"`, `""`)+`"*`)
+		// Quote to neutralise FTS5 operators, then add the prefix star. Identifiers
+		// containing digits are matched exactly: ticket-12 must not match ticket-123.
+		q := `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+		if !hasDigit(s) {
+			q += "*"
+		}
+		parts = append(parts, q)
 	}
 	sep := " OR "
 	if mode == "all" {
@@ -130,4 +140,13 @@ func Stems(q string) []string {
 		out = append(out, stem(t))
 	}
 	return out
+}
+
+func hasDigit(s string) bool {
+	for _, c := range s {
+		if unicode.IsDigit(c) {
+			return true
+		}
+	}
+	return false
 }

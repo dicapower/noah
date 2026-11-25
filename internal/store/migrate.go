@@ -29,11 +29,13 @@ CREATE TABLE memories (
 CREATE UNIQUE INDEX idx_memories_topic ON memories(space, topic) WHERE topic IS NOT NULL;
 CREATE UNIQUE INDEX idx_memories_hash  ON memories(space, hash);
 CREATE INDEX idx_memories_recent ON memories(space, pinned DESC, updated_at DESC);
+CREATE INDEX idx_memories_space_id ON memories(space, id);
 
 CREATE VIRTUAL TABLE memories_fts USING fts5(
 	title, content, tags,
 	content='memories', content_rowid='id',
-	tokenize='unicode61 remove_diacritics 2'
+	tokenize='unicode61 remove_diacritics 2',
+	prefix='2 3 4'
 );
 CREATE TRIGGER memories_ai AFTER INSERT ON memories BEGIN
 	INSERT INTO memories_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);

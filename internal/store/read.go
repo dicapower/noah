@@ -74,14 +74,20 @@ func (s *Store) Forget(ctx context.Context, space string, id int64) error {
 
 // Candidates returns up to limit FTS matches ordered by BM25. An empty space
 // searches every space; an empty kind matches every kind.
+//
+// It runs in two steps. The first sorts only (rowid, score) pairs, so the
+// sort never carries memory text; the second loads the full rows for the few
+// winners. Sorting wide rows for every match was the dominant cost.
 func (s *Store) Candidates(ctx context.Context, space, kind, match string, limit int) ([]memory.Scored, error) {
 	if match == "" {
 		return nil, nil
 	}
-	q := `SELECT ` + cols + `, bm25(memories_fts, 5.0, 1.0, 3.0) AS score
-		FROM memories_fts JOIN memories m ON m.id = memories_fts.rowid
-		WHERE memories_fts MATCH ?`
+	q := `SELECT memories_fts.rowid, bm25(memories_fts, 5.0, 1.0, 3.0) AS score FROM memories_fts`
 	args := []any{match}
+	if space != "" || kind != "" {
+		q += ` JOIN memories m ON m.id = memories_fts.rowid`
+	}
+	q += ` WHERE memories_fts MATCH ?`
 	if space != "" {
 		q += ` AND m.space = ?`
 		args = append(args, space)
@@ -96,17 +102,56 @@ func (s *Store) Candidates(ctx context.Context, space, kind, match string, limit
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []memory.Scored
+	type idScore struct {
+		id    int64
+		score float64
+	}
+	var top []idScore
 	for rows.Next() {
-		var bm float64
-		m, err := scanMemory(rows, &bm)
+		var x idScore
+		if err := rows.Scan(&x.id, &x.score); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		top = append(top, x)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	if len(top) == 0 {
+		return nil, nil
+	}
+
+	ph := strings.TrimSuffix(strings.Repeat("?,", len(top)), ",")
+	ids := make([]any, len(top))
+	for i, x := range top {
+		ids[i] = x.id
+	}
+	full, err := s.r.QueryContext(ctx, `SELECT `+cols+` FROM memories m WHERE m.id IN (`+ph+`)`, ids...)
+	if err != nil {
+		return nil, err
+	}
+	defer full.Close()
+	byID := make(map[int64]memory.Memory, len(top))
+	for full.Next() {
+		m, err := scanMemory(full)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, memory.Scored{Memory: m, BM25: bm})
+		byID[m.ID] = m
 	}
-	return out, rows.Err()
+	if err := full.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]memory.Scored, 0, len(top))
+	for _, x := range top {
+		if m, ok := byID[x.id]; ok {
+			out = append(out, memory.Scored{Memory: m, BM25: x.score})
+		}
+	}
+	return out, nil
 }
 
 // Recent returns pinned memories first, then the most recently updated.
