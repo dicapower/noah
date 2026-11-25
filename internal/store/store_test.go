@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -245,5 +246,49 @@ func TestMoveBetweenSpaces(t *testing.T) {
 	}
 	if _, err := s.Move(ctx, 99999, "x"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+}
+
+// Upgrading a v1 database keeps every memory and its search index, and from then
+// on a deleted id is never handed out again.
+func TestMigrationToV2KeepsDataAndNeverReusesIDs(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "old.db")
+	db, err := sql.Open(driverName, dsn(path, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, migrations[0]); err != nil {
+		t.Fatal(err)
+	}
+	db.ExecContext(ctx, `PRAGMA user_version = 1`)
+	for i := 1; i <= 3; i++ {
+		if _, err := db.ExecContext(ctx, `INSERT INTO memories(space,title,content,hash,created_at,updated_at) VALUES('p',?,?,?,1,1)`,
+			fmt.Sprintf("T%d", i), fmt.Sprintf("uniqueword%d content", i), fmt.Sprintf("h%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db.Close()
+
+	s, err := Open(path, Options{})
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	defer s.Close()
+	if c, _ := s.Candidates(ctx, "p", "", `"uniqueword2"*`, 5); len(c) != 1 || c[0].Memory.ID != 2 {
+		t.Fatalf("search index lost after upgrade: %+v", c)
+	}
+	if rep, _ := s.Check(ctx); !rep.IndexOK || rep.Memories != 3 || rep.SchemaVersion != 2 {
+		t.Fatalf("doctor after upgrade: %+v", rep)
+	}
+	if err := s.Forget(ctx, "", 3); err != nil {
+		t.Fatal(err)
+	}
+	r, err := s.Save(ctx, memory.Input{Space: "p", Title: "New", Content: "fresh note", Trust: memory.TrustUser})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Memory.ID != 4 {
+		t.Fatalf("deleted id was reused: got %d, want 4", r.Memory.ID)
 	}
 }

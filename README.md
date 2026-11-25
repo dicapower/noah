@@ -38,7 +38,7 @@ sudo mv noah /usr/local/bin/        # or any folder in your PATH
 noah version
 ```
 
-(Once the repository is public: `go install github.com/dicapower/noah/cmd/noah@latest`.)
+(Once the repository is public: `go install github.com/dicapower/noah/cmd/noah@latest`, or download a ready-made binary from the Releases page. Every `v*` tag publishes binaries for Linux, macOS and Windows. See [CHANGELOG.md](CHANGELOG.md).)
 
 It is pure Go with no C dependencies, so the same command builds on macOS, Linux and Windows.
 

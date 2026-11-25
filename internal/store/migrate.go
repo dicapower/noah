@@ -48,6 +48,46 @@ CREATE TRIGGER memories_au AFTER UPDATE ON memories BEGIN
 	INSERT INTO memories_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
 END;
 `,
+	// v2: ids are never reused. Without AUTOINCREMENT SQLite hands out the
+	// number of a deleted last row again, so an id saved elsewhere could end up
+	// pointing at a different memory. Rows keep their ids, so the FTS index
+	// stays valid.
+	`
+CREATE TABLE memories_new (
+	id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	space      TEXT    NOT NULL,
+	title      TEXT    NOT NULL,
+	content    TEXT    NOT NULL,
+	kind       TEXT    NOT NULL DEFAULT 'note',
+	topic      TEXT,
+	tags       TEXT    NOT NULL DEFAULT '',
+	trust      TEXT    NOT NULL DEFAULT 'agent',
+	pinned     INTEGER NOT NULL DEFAULT 0,
+	hash       TEXT    NOT NULL,
+	revision   INTEGER NOT NULL DEFAULT 1,
+	redactions INTEGER NOT NULL DEFAULT 0,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL
+);
+INSERT INTO memories_new (id, space, title, content, kind, topic, tags, trust, pinned, hash, revision, redactions, created_at, updated_at)
+	SELECT id, space, title, content, kind, topic, tags, trust, pinned, hash, revision, redactions, created_at, updated_at FROM memories;
+DROP TABLE memories;
+ALTER TABLE memories_new RENAME TO memories;
+CREATE UNIQUE INDEX idx_memories_topic ON memories(space, topic) WHERE topic IS NOT NULL;
+CREATE UNIQUE INDEX idx_memories_hash  ON memories(space, hash);
+CREATE INDEX idx_memories_recent ON memories(space, pinned DESC, updated_at DESC);
+CREATE INDEX idx_memories_space_id ON memories(space, id);
+CREATE TRIGGER memories_ai AFTER INSERT ON memories BEGIN
+	INSERT INTO memories_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
+END;
+CREATE TRIGGER memories_ad AFTER DELETE ON memories BEGIN
+	INSERT INTO memories_fts(memories_fts, rowid, title, content, tags) VALUES ('delete', old.id, old.title, old.content, old.tags);
+END;
+CREATE TRIGGER memories_au AFTER UPDATE ON memories BEGIN
+	INSERT INTO memories_fts(memories_fts, rowid, title, content, tags) VALUES ('delete', old.id, old.title, old.content, old.tags);
+	INSERT INTO memories_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
+END;
+`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
