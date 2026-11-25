@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"net/url"
+	"path/filepath"
 
 	_ "modernc.org/sqlite" // pure-Go SQLite driver: no C toolchain needed to build
 )
@@ -28,12 +29,23 @@ func dsn(path string, writer bool) string {
 	} else {
 		q.Add("_pragma", "query_only(1)")
 	}
-	u := url.URL{Scheme: "file", Path: path, RawQuery: q.Encode()}
+	u := url.URL{Scheme: "file", Path: uriPath(path), RawQuery: q.Encode()}
 	return u.String()
+}
+
+// uriPath turns a file system path into the path part of a file: URI. A Windows
+// path like C:\Users\me\noah.db becomes /C:/Users/me/noah.db; without this the
+// drive letter is read as a host name and the database cannot be opened.
+func uriPath(p string) string {
+	p = filepath.ToSlash(p)
+	if len(p) >= 2 && p[1] == ':' {
+		p = "/" + p
+	}
+	return p
 }
 
 // OpenReadOnlyDB opens a foreign SQLite file read-only (used by importers).
 func OpenReadOnlyDB(path string) (*sql.DB, error) {
-	u := url.URL{Scheme: "file", Path: path, RawQuery: "mode=ro&_pragma=busy_timeout(5000)"}
+	u := url.URL{Scheme: "file", Path: uriPath(path), RawQuery: "mode=ro&_pragma=busy_timeout(5000)"}
 	return sql.Open(driverName, u.String())
 }

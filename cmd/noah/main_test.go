@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -145,7 +146,8 @@ func TestHookStopBlocksOnceThenAllows(t *testing.T) {
 	if err := os.WriteFile(tr, []byte(b.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	payload := `{"session_id":"sess-1","transcript_path":"` + tr + `"}`
+	pj, _ := json.Marshal(map[string]string{"session_id": "sess-1", "transcript_path": tr}) // escapes Windows backslashes
+	payload := string(pj)
 	r := runCLI(t, payload, "hook", "stop")
 	if r.code != 0 || !strings.Contains(r.out, `"decision":"block"`) || !strings.Contains(r.out, "mem_save") {
 		t.Fatalf("first stop should ask to save: %+v", r)

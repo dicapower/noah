@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -290,5 +291,23 @@ func TestMigrationToV2KeepsDataAndNeverReusesIDs(t *testing.T) {
 	}
 	if r.Memory.ID != 4 {
 		t.Fatalf("deleted id was reused: got %d, want 4", r.Memory.ID)
+	}
+}
+
+func TestURIPathHandlesWindowsDrives(t *testing.T) {
+	for in, want := range map[string]string{
+		`C:\Users\me\.noah\noah.db`: "/C:/Users/me/.noah/noah.db",
+		`C:/Users/me/noah.db`:       "/C:/Users/me/noah.db",
+		"/home/me/noah.db":          "/home/me/noah.db",
+	} {
+		got := uriPath(in)
+		if filepath.Separator == '\\' || !strings.Contains(in, `\`) { // ToSlash only rewrites on Windows
+			if got != want {
+				t.Errorf("uriPath(%q) = %q, want %q", in, got, want)
+			}
+		}
+	}
+	if u := dsn(`C:/Users/me/noah.db`, true); !strings.HasPrefix(u, "file:///C:/Users/me/noah.db?") {
+		t.Fatalf("bad DSN for a Windows path: %s", u)
 	}
 }
