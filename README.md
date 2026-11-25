@@ -123,6 +123,18 @@ Six tools, kept deliberately few because every tool description costs context on
 | `mem_forget` | Delete a memory that is wrong or obsolete |
 | `mem_spaces` | List projects and their sizes |
 
+## Global memory
+
+Some knowledge applies to every project: how you like to work, your hosting setup, general conventions. Save it in the `global` space and it shows up everywhere: in the session context and in every project search.
+
+```sh
+noah save --space global "Client apps are deployed on our Dokploy instance behind Traefik"
+noah move 42 global          # promote an existing memory to global
+noah move 42 my-project      # or move it to another project
+```
+
+Agents can do the same by saving with `space: "global"`. Keep it for things that are true across projects; project-specific notes stay in their project.
+
 ## How projects work
 
 A memory belongs to a *space* (project), chosen in this order:
@@ -150,7 +162,7 @@ Agent memory is an attack surface: whatever an agent saves is read back into a f
 ```
 noah mcp | setup | hook session-start|stop   agent integration
 noah save | search | context | get | forget  memories
-noah spaces | space                          projects
+noah spaces | space | move                   projects
 noah import engram                           migrate from Engram
 noah doctor | export | version               maintenance
 ```

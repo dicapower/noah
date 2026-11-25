@@ -31,7 +31,9 @@ type Options struct {
 	Space string // restrict to this space; empty searches all spaces
 	Kind  string // restrict to this kind; empty means any
 	Limit int    // results to return (default 8)
-	Now   time.Time
+	// Global also searches the global space when Space is a project.
+	Global bool
+	Now    time.Time
 }
 
 // Hit is one ranked result.
@@ -72,12 +74,27 @@ func Run(ctx context.Context, src Source, q string, opt Options) ([]Hit, error) 
 	if len(stems) == 0 {
 		return nil, nil
 	}
-	cands, err := src.Candidates(ctx, opt.Space, opt.Kind, query.Match(q, "all"), CandidateLimit)
+	spaces := []string{opt.Space}
+	if opt.Global && opt.Space != "" && opt.Space != memory.Global {
+		spaces = append(spaces, memory.Global)
+	}
+	collect := func(mode string) ([]memory.Scored, error) {
+		var all []memory.Scored
+		for _, sp := range spaces {
+			c, err := src.Candidates(ctx, sp, opt.Kind, query.Match(q, mode), CandidateLimit)
+			if err != nil {
+				return nil, err
+			}
+			all = merge(all, c)
+		}
+		return all, nil
+	}
+	cands, err := collect("all")
 	if err != nil {
 		return nil, err
 	}
 	if len(cands) < opt.Limit && len(stems) > 1 {
-		more, err := src.Candidates(ctx, opt.Space, opt.Kind, query.Match(q, "any"), CandidateLimit)
+		more, err := collect("any")
 		if err != nil {
 			return nil, err
 		}

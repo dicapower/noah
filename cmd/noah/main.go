@@ -26,6 +26,7 @@ Memories
   context              show pinned and recent memories
   get <id>             show one memory
   forget <id>          delete a memory
+  move <id> <space>    move a memory to another project (global = every project)
   spaces               list project spaces
   space                print the space for the current directory
 
@@ -80,6 +81,8 @@ func run(args []string, in io.Reader, out, errw io.Writer) int {
 		return c.doctor(rest)
 	case "export":
 		err = c.export(rest)
+	case "move":
+		err = c.move(rest)
 	case "import":
 		err = c.importCmd(rest)
 	case "version", "--version", "-v":

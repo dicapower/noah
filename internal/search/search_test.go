@@ -165,3 +165,42 @@ func TestVagueQueryStillReturnsSeveral(t *testing.T) {
 		t.Fatalf("a vague one-word query should keep every comparable match, got %d", len(hits))
 	}
 }
+
+func TestProjectSearchIncludesGlobalButNotOtherProjects(t *testing.T) {
+	s := seed(t)
+	ctx := context.Background()
+	for _, in := range []memory.Input{
+		{Space: memory.Global, Title: "Dokploy hosting", Content: "All client apps are deployed on our Dokploy instance behind Traefik."},
+		{Space: "other", Title: "Other Dokploy note", Content: "The other project also uses Dokploy for hosting."},
+	} {
+		if _, err := s.Save(ctx, in); err != nil {
+			t.Fatal(err)
+		}
+	}
+	hits, err := search.Run(ctx, s, "where do we host apps with Dokploy", search.Options{Space: "app", Global: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var spaces []string
+	for _, h := range hits {
+		spaces = append(spaces, h.Memory.Space)
+	}
+	if !contains(spaces, memory.Global) || contains(spaces, "other") {
+		t.Fatalf("want global but not other projects, got %v", spaces)
+	}
+	hits, _ = search.Run(ctx, s, "where do we host apps with Dokploy", search.Options{Space: "app"})
+	for _, h := range hits {
+		if h.Memory.Space == memory.Global {
+			t.Fatal("without Global the global space must not be searched")
+		}
+	}
+}
+
+func contains(xs []string, x string) bool {
+	for _, v := range xs {
+		if v == x {
+			return true
+		}
+	}
+	return false
+}

@@ -121,6 +121,18 @@ Seis herramientas, pocas a propósito porque cada descripción consume contexto 
 | `mem_forget` | Borra una memoria errónea u obsoleta |
 | `mem_spaces` | Lista los proyectos y su tamaño |
 
+## Memoria global
+
+Hay conocimiento que vale para todos los proyectos: cómo prefieres trabajar, tu infraestructura de hosting, convenciones generales. Guárdalo en el espacio `global` y aparecerá en todas partes: en el contexto de inicio de sesión y en cada búsqueda de proyecto.
+
+```sh
+noah save --space global "Las apps de clientes se despliegan en nuestro Dokploy tras Traefik"
+noah move 42 global          # promover una memoria existente a global
+noah move 42 mi-proyecto     # o moverla a otro proyecto
+```
+
+Los agentes pueden hacer lo mismo guardando con `space: "global"`. Resérvalo para lo que es cierto en todos los proyectos; las notas específicas se quedan en su proyecto.
+
 ## Cómo se decide el proyecto
 
 Una memoria pertenece a un *space* (proyecto), elegido en este orden:
@@ -148,7 +160,7 @@ La memoria de agentes es una superficie de ataque: lo que un agente guarda se vu
 ```
 noah mcp | setup | hook session-start|stop   integración con agentes
 noah save | search | context | get | forget  memorias
-noah spaces | space                          proyectos
+noah spaces | space | move                   proyectos
 noah import engram                           migrar desde Engram
 noah doctor | export | version               mantenimiento
 ```

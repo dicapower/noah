@@ -27,6 +27,21 @@ func FormatHits(hits []search.Hit, showSpace bool) string {
 	return b.String()
 }
 
+// ShowSpace reports whether results should name their space: always when the
+// search covered every space, and when a project search also returned global
+// memories.
+func ShowSpace(hits []search.Hit, searched string) bool {
+	if searched == "" {
+		return true
+	}
+	for _, h := range hits {
+		if h.Memory.Space != searched {
+			return true
+		}
+	}
+	return false
+}
+
 // FormatMemory renders one memory in full.
 func FormatMemory(m memory.Memory) string {
 	var b strings.Builder

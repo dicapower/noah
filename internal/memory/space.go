@@ -13,6 +13,11 @@ import (
 // from unrelated work piling up under one project name.
 const Unscoped = "_unscoped"
 
+// Global is the space for knowledge that applies to every project: how you work,
+// shared infrastructure, general conventions. Project searches and the session
+// context include it automatically.
+const Global = "global"
+
 var (
 	spaceRe   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 	spaceJunk = regexp.MustCompile(`[^a-z0-9._-]+`)

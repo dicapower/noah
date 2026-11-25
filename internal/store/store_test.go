@@ -217,3 +217,33 @@ func TestTopicUpdateKeepsUnstatedFields(t *testing.T) {
 		t.Fatalf("stated fields must replace: %+v", m)
 	}
 }
+
+func TestMoveBetweenSpaces(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(filepath.Join(t.TempDir(), "n.db"), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	a, _ := s.Save(ctx, memory.Input{Space: "proj", Title: "Hosting", Content: "We host on Dokploy", Topic: "infra/hosting", Trust: memory.TrustUser})
+	m, err := s.Move(ctx, a.Memory.ID, memory.Global)
+	if err != nil || m.Space != memory.Global {
+		t.Fatalf("move: %+v %v", m, err)
+	}
+	if got, _ := s.List(ctx, "proj", "", 10, 0); len(got) != 0 {
+		t.Fatalf("project should be empty, has %d", len(got))
+	}
+	// the search index must follow the move
+	cands, _ := s.Candidates(ctx, memory.Global, "", `"dokploy"*`, 5)
+	if len(cands) != 1 {
+		t.Fatalf("index not updated: %d", len(cands))
+	}
+	// a clash in the target space is reported, not overwritten
+	b, _ := s.Save(ctx, memory.Input{Space: "proj", Title: "Hosting 2", Content: "Different text", Topic: "infra/hosting", Trust: memory.TrustUser})
+	if _, err := s.Move(ctx, b.Memory.ID, memory.Global); !errors.Is(err, ErrConflict) {
+		t.Fatalf("want ErrConflict, got %v", err)
+	}
+	if _, err := s.Move(ctx, 99999, "x"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+}

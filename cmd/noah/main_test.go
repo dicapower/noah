@@ -157,3 +157,30 @@ func TestHookStopBlocksOnceThenAllows(t *testing.T) {
 		t.Fatalf("garbage input must be swallowed: %+v", r)
 	}
 }
+
+func TestGlobalMemoryAndMove(t *testing.T) {
+	proj := env(t)
+	_ = proj
+	runCLI(t, "", "save", "--space", "global", "--title", "Language", "Always answer in Spanish from Spain")
+	if r := runCLI(t, "", "search", "which language do we answer in"); !strings.Contains(r.out, "global") || !strings.Contains(r.out, "Spanish from Spain") {
+		t.Fatalf("project search must include global: %+v", r)
+	}
+	if r := runCLI(t, "", "context"); !strings.Contains(r.out, `space="global"`) {
+		t.Fatalf("context must include global: %+v", r)
+	}
+	runCLI(t, "", "save", "--space", "someproj", "--title", "Hosting", "Everything runs on Dokploy")
+	r := runCLI(t, "", "search", "--all", "Dokploy")
+	if !strings.Contains(r.out, "someproj") {
+		t.Fatalf("setup failed: %+v", r)
+	}
+	id := strings.TrimPrefix(strings.Fields(strings.SplitN(r.out, "\n", 3)[1])[0], "#")
+	if m := runCLI(t, "", "move", id, "global"); m.code != 0 || !strings.Contains(m.out, "now in global") {
+		t.Fatalf("move: %+v", m)
+	}
+	if r := runCLI(t, "", "search", "Dokploy"); !strings.Contains(r.out, "global") {
+		t.Fatalf("moved memory must show up as global: %+v", r)
+	}
+	if m := runCLI(t, "", "move", "x"); m.code != 2 {
+		t.Fatalf("bad usage must return 2: %+v", m)
+	}
+}

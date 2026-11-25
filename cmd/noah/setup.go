@@ -95,9 +95,10 @@ func (c *cli) hook(args []string) int {
 		fmt.Fprintln(c.err, "noah:", err)
 		return 0
 	}
+	glob, _ := st.Recent(context.Background(), memory.Global, 6)
 	_ = json.NewEncoder(c.out).Encode(map[string]any{"hookSpecificOutput": map[string]any{
 		"hookEventName":     "SessionStart",
-		"additionalContext": hook.StartContext(payload.Source, space, ms, 4000),
+		"additionalContext": hook.StartContext(payload.Source, space, ms, glob, 4000),
 	}})
 	return 0
 }

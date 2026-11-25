@@ -168,14 +168,14 @@ func (c *cli) search(args []string) error {
 		return err
 	}
 	defer st.Close()
-	hits, err := search.Run(context.Background(), st, strings.Join(pos, " "), search.Options{Space: sp, Kind: *kind, Limit: *limit})
+	hits, err := search.Run(context.Background(), st, strings.Join(pos, " "), search.Options{Space: sp, Kind: *kind, Limit: *limit, Global: true})
 	if err != nil {
 		return err
 	}
 	if *asJSON {
 		return json.NewEncoder(c.out).Encode(hits)
 	}
-	fmt.Fprint(c.out, mcpserver.FormatHits(hits, sp == ""))
+	fmt.Fprint(c.out, mcpserver.FormatHits(hits, mcpserver.ShowSpace(hits, sp)))
 	return nil
 }
 
@@ -199,7 +199,13 @@ func (c *cli) context(args []string) error {
 	if err != nil {
 		return err
 	}
-	if out := memory.RenderContext(sp, ms, 6000); out != "" {
+	out := memory.RenderContext(sp, ms, 6000)
+	if sp != memory.Global {
+		if gm, err := st.Recent(context.Background(), memory.Global, 6); err == nil {
+			out += memory.RenderContext(memory.Global, gm, 3000)
+		}
+	}
+	if out != "" {
 		fmt.Fprint(c.out, out)
 	} else {
 		fmt.Fprintf(c.out, "No memories saved yet for %q.\n", sp)
@@ -437,5 +443,33 @@ func (c *cli) importCmd(args []string) error {
 	for _, k := range names {
 		fmt.Fprintf(c.out, "  %-32s %d\n", k, rep.Spaces[k])
 	}
+	return nil
+}
+
+func (c *cli) move(args []string) error {
+	fs := c.flags("move")
+	pos, err := parse(fs, args)
+	if err != nil || len(pos) != 2 {
+		fmt.Fprintln(c.err, "usage: noah move <id> <space>   (use \"global\" for knowledge that applies to every project)")
+		return errUsage
+	}
+	id, err := strconv.ParseInt(strings.TrimPrefix(pos[0], "#"), 10, 64)
+	if err != nil {
+		return fmt.Errorf("%q is not a memory id", pos[0])
+	}
+	sp, err := memory.NormalizeSpace(pos[1])
+	if err != nil {
+		return err
+	}
+	st, err := openStore()
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	m, err := st.Move(context.Background(), id, sp)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(c.out, "#%d is now in %s\n", m.ID, m.Space)
 	return nil
 }

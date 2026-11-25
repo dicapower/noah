@@ -39,11 +39,11 @@ func many(n int, name string) string {
 }
 
 func TestStartContext(t *testing.T) {
-	if got := StartContext("startup", "app", nil, 4000); !strings.Contains(got, "mem_save") || strings.Contains(got, "<noah-memory") {
+	if got := StartContext("startup", "app", nil, nil, 4000); !strings.Contains(got, "mem_save") || strings.Contains(got, "<noah-memory") {
 		t.Fatalf("no memories: protocol only, got %q", got)
 	}
 	ms := []memory.Memory{{ID: 1, Title: "Use SQLite", Content: "Use SQLite for storage", Kind: "decision", Trust: memory.TrustUser, UpdatedAt: time.Now().UnixMilli()}}
-	got := StartContext("compact", "app", ms, 4000)
+	got := StartContext("compact", "app", ms, nil, 4000)
 	for _, want := range []string{"mem_save", "compacted", "<noah-memory", "Use SQLite"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %q", want, got)
@@ -109,5 +109,16 @@ func TestPruneRemovesOldMarkers(t *testing.T) {
 	prune(dir, time.Now())
 	if _, err := os.Stat(old); err == nil {
 		t.Fatal("old marker should be removed")
+	}
+}
+
+func TestStartContextIncludesGlobalMemories(t *testing.T) {
+	g := []memory.Memory{{ID: 9, Title: "Prefers Spanish", Content: "Answer in Spanish from Spain", Kind: "note", Trust: memory.TrustUser, UpdatedAt: time.Now().UnixMilli()}}
+	got := StartContext("startup", "app", nil, g, 4000)
+	if !strings.Contains(got, `space="global"`) || !strings.Contains(got, "Spanish from Spain") {
+		t.Fatalf("global memories missing: %q", got)
+	}
+	if strings.Contains(StartContext("startup", memory.Global, nil, g, 4000), `<noah-memory space="global">`) {
+		t.Fatal("inside the global space the global block must not be repeated")
 	}
 }

@@ -21,14 +21,14 @@ import (
 // Protocol is noah's own instruction to the agent. It is trusted text written
 // by noah, kept outside the <noah-memory> block that holds untrusted notes.
 const Protocol = `noah is this project's persistent memory (tools mem_search and mem_save).
-Search it before non-trivial work. Save with mem_save when you make a decision (include why), fix a bug (include the root cause), learn a convention or gotcha, or finish a significant piece of work. Use a stable "topic" so a recurring fact is updated, not duplicated. Never save secrets or routine chatter.`
+Search it before non-trivial work. Save with mem_save when you make a decision (include why), fix a bug (include the root cause), learn a convention or gotcha, or finish a significant piece of work. Use a stable "topic" so a recurring fact is updated, not duplicated. Facts that apply to every project (how the user works, shared infrastructure, general conventions) go in space "global". Never save secrets or routine chatter.`
 
 const afterCompact = `The conversation was just compacted. If something important from before is missing and not listed below, search noah before continuing.`
 
 // StartContext builds the SessionStart context: the protocol, then the recent
 // memories of the space. source is Claude Code's SessionStart source
 // (startup, resume, clear, compact). It is never empty.
-func StartContext(source, space string, ms []memory.Memory, maxChars int) string {
+func StartContext(source, space string, ms, global []memory.Memory, maxChars int) string {
 	var b strings.Builder
 	b.WriteString(Protocol)
 	b.WriteString("\n")
@@ -39,6 +39,10 @@ func StartContext(source, space string, ms []memory.Memory, maxChars int) string
 	if len(ms) > 0 {
 		b.WriteString("\n")
 		b.WriteString(memory.RenderContext(space, ms, maxChars))
+	}
+	if len(global) > 0 && space != memory.Global {
+		b.WriteString("\n")
+		b.WriteString(memory.RenderContext(memory.Global, global, maxChars/2))
 	}
 	return b.String()
 }
