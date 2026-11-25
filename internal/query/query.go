@@ -118,3 +118,16 @@ func Match(q, mode string) string {
 	}
 	return strings.Join(parts, sep)
 }
+
+// Fold lowercases s and strips diacritics, the same way search terms are folded.
+func Fold(s string) string { return fold(s) }
+
+// Stems returns the folded, stemmed terms of q, in the same form Match uses.
+func Stems(q string) []string {
+	terms := Terms(q)
+	out := make([]string, 0, len(terms))
+	for _, t := range terms {
+		out = append(out, stem(t))
+	}
+	return out
+}
