@@ -52,17 +52,23 @@ Es Go puro, sin dependencias en C: el mismo comando compila en macOS, Linux y Wi
 claude mcp add noah --scope user -- noah mcp
 ```
 
-Opcional pero recomendable: cargar las memorias recientes al empezar cada sesión. Añade esto a `~/.claude/settings.json`:
+Recomendado: añade estos hooks a `~/.claude/settings.json`. Convierten guardar en un hábito en vez de una esperanza:
 
 ```json
 {
   "hooks": {
     "SessionStart": [
       { "hooks": [ { "type": "command", "command": "noah hook session-start" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "noah hook stop" } ] }
     ]
   }
 }
 ```
+
+- **`SessionStart`** se ejecuta al empezar, reanudar, limpiar o compactar una sesión. Le recuerda al agente cuándo guardar y carga las memorias recientes del proyecto, así no se pierde nada tras una compactación. Funciona incluso en un proyecto sin memorias todavía.
+- **`Stop`** (opcional) se ejecuta cuando el agente termina. Si hizo trabajo sustancial (10 o más llamadas a herramientas) y no guardó nada en noah desde entonces, le pide, **una sola vez por sesión**, que guarde lo aprendido antes. Lee el registro de la sesión en local; no interviene ninguna IA. El umbral se cambia con `NOAH_STOP_MIN_TOOLS`.
 
 ### Cursor
 
@@ -140,7 +146,7 @@ La memoria de agentes es una superficie de ataque: lo que un agente guarda se vu
 ## Todos los comandos
 
 ```
-noah mcp | setup | hook session-start        integración con agentes
+noah mcp | setup | hook session-start|stop   integración con agentes
 noah save | search | context | get | forget  memorias
 noah spaces | space                          proyectos
 noah import engram                           migrar desde Engram
@@ -175,6 +181,7 @@ Método, comparativas y experimentos descartados: [docs/ARCHITECTURE.md](docs/AR
 
 ## Límites conocidos
 
+- **Guardar sigue dependiendo del agente.** Los hooks se lo recuerdan en los momentos clave, pero ninguna herramienta puede decidir sola qué merece conservarse.
 - **Busca palabras, no significado.** "¿Qué base de datos elegimos?" no encontrará una nota que solo diga "SQLite". Están planificados embeddings opcionales.
 - **Una palabra presente en casi todas las memorias es lenta a tamaños muy grandes** (unos 280 ms con 100.000 memorias). Las consultas normales son mucho más rápidas.
 - **Sin sincronización entre equipos.** Comparte con `noah export` y Git.

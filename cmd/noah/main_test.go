@@ -99,8 +99,12 @@ func TestDoctorAndSpaces(t *testing.T) {
 
 func TestHookSessionStartIsQuietAndValid(t *testing.T) {
 	proj := env(t)
-	if r := runCLI(t, `{"cwd":"`+proj+`"}`, "hook", "session-start"); r.code != 0 || r.out != "" {
-		t.Fatalf("empty store must print nothing: %+v", r)
+	r0 := runCLI(t, `{"cwd":"`+proj+`"}`, "hook", "session-start")
+	if r0.code != 0 || !strings.Contains(r0.out, "mem_save") || strings.Contains(r0.out, "<noah-memory") {
+		t.Fatalf("empty store must still print the protocol, without a memory block: %+v", r0)
+	}
+	if r := runCLI(t, `{"cwd":"`+proj+`","source":"compact"}`, "hook", "session-start"); !strings.Contains(r.out, "compacted") {
+		t.Fatalf("compact source must say so: %+v", r)
 	}
 	runCLI(t, "", "save", "Remember the deploy checklist")
 	r := runCLI(t, `{"cwd":"`+proj+`"}`, "hook", "session-start")
@@ -127,5 +131,29 @@ func TestUsageAndUnknown(t *testing.T) {
 	}
 	if r := runCLI(t, "", "setup", "cursor"); r.code != 0 || !strings.Contains(r.out, `"mcpServers"`) {
 		t.Fatalf("setup cursor: %+v", r)
+	}
+}
+
+func TestHookStopBlocksOnceThenAllows(t *testing.T) {
+	env(t)
+	dir := t.TempDir()
+	tr := filepath.Join(dir, "t.jsonl")
+	var b strings.Builder
+	for i := 0; i < 12; i++ {
+		b.WriteString(`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash"}]}}` + "\n")
+	}
+	if err := os.WriteFile(tr, []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	payload := `{"session_id":"sess-1","transcript_path":"` + tr + `"}`
+	r := runCLI(t, payload, "hook", "stop")
+	if r.code != 0 || !strings.Contains(r.out, `"decision":"block"`) || !strings.Contains(r.out, "mem_save") {
+		t.Fatalf("first stop should ask to save: %+v", r)
+	}
+	if r := runCLI(t, payload, "hook", "stop"); r.code != 0 || r.out != "" {
+		t.Fatalf("second stop must stay silent: %+v", r)
+	}
+	if r := runCLI(t, `not json`, "hook", "stop"); r.code != 0 || r.out != "" {
+		t.Fatalf("garbage input must be swallowed: %+v", r)
 	}
 }

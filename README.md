@@ -52,17 +52,23 @@ It is pure Go with no C dependencies, so the same command builds on macOS, Linux
 claude mcp add noah --scope user -- noah mcp
 ```
 
-Optional but recommended: load recent memories at the start of every session. Add this to `~/.claude/settings.json`:
+Recommended: add the hooks below to `~/.claude/settings.json`. They make saving a habit instead of a hope:
 
 ```json
 {
   "hooks": {
     "SessionStart": [
       { "hooks": [ { "type": "command", "command": "noah hook session-start" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "noah hook stop" } ] }
     ]
   }
 }
 ```
+
+- **`SessionStart`** runs when a session starts, resumes, is cleared or is compacted. It tells the agent when to save and loads the project's recent memories, so nothing is lost after a compaction. It works even in a project with no memories yet.
+- **`Stop`** (optional) runs when the agent finishes. If it did substantial work (10+ tool calls) and saved nothing to noah since, it asks the agent, **once per session**, to save what it learned first. It reads the session log locally; no AI is involved. Change the threshold with `NOAH_STOP_MIN_TOOLS`.
 
 ### Cursor
 
@@ -142,7 +148,7 @@ Agent memory is an attack surface: whatever an agent saves is read back into a f
 ## All commands
 
 ```
-noah mcp | setup | hook session-start        agent integration
+noah mcp | setup | hook session-start|stop   agent integration
 noah save | search | context | get | forget  memories
 noah spaces | space                          projects
 noah import engram                           migrate from Engram
@@ -177,6 +183,7 @@ Method, comparisons and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHIT
 
 ## Known limits
 
+- **Saving still depends on the agent.** The hooks remind it at the right moments, but no tool can decide by itself what is worth keeping.
 - **Matches words, not meaning.** "What database did we choose?" will not find a note that only says "SQLite". Optional embeddings are planned.
 - **A word that appears in almost every memory is slow at very large sizes** (about 280 ms at 100,000 memories). Normal queries are much faster.
 - **No sync between machines.** Share with `noah export` and Git.

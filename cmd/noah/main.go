@@ -17,7 +17,8 @@ Usage: noah <command> [flags]
 Agent integration
   mcp                  run the MCP server on stdio (what your agent launches)
   setup [agent]        print how to connect Claude Code or Cursor
-  hook session-start   Claude Code SessionStart hook: inject recent memories
+  hook session-start   Claude Code hook: memory protocol + recent memories
+  hook stop            Claude Code hook: ask once to save after substantial work
 
 Memories
   save [text|-]        save a memory (text, or - / piped stdin)
