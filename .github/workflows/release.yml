@@ -2,6 +2,13 @@ name: release
 on:
   push:
     tags: ["v*"]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish
+        required: true
 permissions:
   contents: write
 jobs:
@@ -9,12 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - run: go vet ./... && go test ./...
       - name: Build
         run: |
+          GITHUB_REF_NAME=${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}
+          echo "TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
           mkdir dist
           for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
             os=${t%/*}; arch=${t#*/}
@@ -30,4 +41,10 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "noah $GITHUB_REF_NAME" --notes-file <(awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## v"v"$"{f=1;next} /^## v/{f=0} f' CHANGELOG.md)
+        run: |
+          awk -v v="${TAG#v}" '$0 ~ "^## v"v"$"{f=1;next} /^## v/{f=0} f' CHANGELOG.md > notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "noah $TAG" --notes-file notes.md
+          fi
