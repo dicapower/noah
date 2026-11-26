@@ -4,7 +4,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
+
+var testNow = time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC) // a Tuesday
 
 func TestTermsDropsStopwordsAndFoldsAccents(t *testing.T) {
 	got := Terms("¿Por qué elegimos Dokploy para desplegar?")
@@ -86,7 +89,7 @@ func TestTime(t *testing.T) {
 		{"qué pasó ayer con el despliegue", true, 0, 2, ""},
 	}
 	for _, c := range cases {
-		w, rest, ok := Time(c.q)
+		w, rest, ok := Time(c.q, testNow)
 		if ok != c.ok {
 			t.Fatalf("%q: ok=%v want %v", c.q, ok, c.ok)
 		}
@@ -104,15 +107,49 @@ func TestTime(t *testing.T) {
 
 func TestTimeEdgeCases(t *testing.T) {
 	for _, q := range []string{"hace 3 meses", "hace un año", "99999999999 days ago", "0 days ago", "hace 0 días", "ago", "hace", "last week", ""} {
-		w, _, ok := Time(q)
+		w, _, ok := Time(q, testNow)
 		if ok && (w.Lo < 0 || w.Hi < w.Lo) {
 			t.Errorf("%q: bad window %v", q, w)
 		}
 	}
-	if _, _, ok := Time("ago"); ok {
+	if _, _, ok := Time("ago", testNow); ok {
 		t.Error("bare 'ago' must not be a date")
 	}
-	if w, _, ok := Time("hace 3 meses"); !ok || w.Lo > 90 || w.Hi < 90 {
+	if w, _, ok := Time("hace 3 meses", testNow); !ok || w.Lo > 90 || w.Hi < 90 {
 		t.Errorf("3 months should cover 90 days: %v %v", w, ok)
+	}
+}
+
+func TestTimeAbsoluteDates(t *testing.T) {
+	cases := []struct {
+		q    string
+		age  float64 // days before 2026-06-30
+		want bool
+	}{
+		{"what did I buy on 2026-06-20?", 10, true},
+		{"what happened on March 3rd", 119, true},
+		{"qué pasó el 3 de marzo de 2026", 119, true},
+		{"on 3 march 2025", 484, true},
+		{"qué hicimos el martes pasado", 7, true},
+		{"what did we decide last friday", 4, true},
+		{"deploy on december 25", 187, true}, // later than today, so last year
+		{"ticket 2026 failed", 0, false},
+		{"on february 31", 0, false},
+		{"march 2024 report", 0, false},
+	}
+	for _, c := range cases {
+		w, rest, ok := Time(c.q, testNow)
+		if ok != c.want {
+			t.Fatalf("%q: ok=%v want %v", c.q, ok, c.want)
+		}
+		if !ok {
+			continue
+		}
+		if w.Lo > c.age || w.Hi < c.age {
+			t.Errorf("%q: window %v misses age %v", c.q, w, c.age)
+		}
+		if strings.Contains(rest, "march") || strings.Contains(rest, "marzo") || strings.Contains(rest, "2026-06") {
+			t.Errorf("%q: date not removed: %q", c.q, rest)
+		}
 	}
 }

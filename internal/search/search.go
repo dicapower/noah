@@ -80,7 +80,7 @@ func Run(ctx context.Context, src Source, q string, opt Options) ([]Hit, error) 
 	}
 	// A relative date in the question ("hace dos semanas") says when the note
 	// was written, not what it says, so it is lifted out of the text match.
-	win, rest, timed := query.Time(q)
+	win, rest, timed := query.Time(q, opt.Now)
 	if timed && len(query.Stems(rest)) > 0 {
 		q = rest
 	}
