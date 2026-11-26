@@ -2,12 +2,16 @@
 
 All notable changes to noah. Versions follow [Semantic Versioning](https://semver.org); while noah is below 1.0 the storage format and commands may still change, and any schema change migrates your database automatically on first run.
 
-## Unreleased
+## v0.4.2
 
 ### Added
 - **Easy install and upgrade.** `install.sh` (one line, macOS and Linux, verifies the checksum, never uses `sudo`, same line upgrades), a Homebrew formula (`Formula/noah.rb`) and a Scoop manifest (`bucket/noah.json`). The release workflow regenerates the formula and manifest from each release's checksums, only for the latest release. `scripts/packaging.sh` does the generating.
 
+- **Windows one-line installer.** `install.ps1` (PowerShell, no admin rights, verifies the checksum, same line upgrades). CI installs from the latest release on macOS, Linux and Windows.
+
 ### Changed
+- README (English and Spanish) opens with how noah and [Rubio-IA](https://github.com/dicapower/rubio-ia) fit together and a three-step quick start for macOS, Linux and Windows.
+- The release workflow has a single trigger, runs are serialized per tag, and it checks the published files against `SHA256SUMS`. Before, creating a release started two builds that could upload mismatched files.
 - `noah version` now reports the right version also when noah is built without `-ldflags` (a plain `go build` in a tagged checkout, or `go install ...@vX.Y.Z`); before it printed `dev`.
 - README (English and Spanish): step-by-step upgrade (downloaded binary with checksum, source, `go install`) and a table with the flags of `save`, `search`, `context`, `stale` and `export`.
 
