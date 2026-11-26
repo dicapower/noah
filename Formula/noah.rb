@@ -2,28 +2,28 @@
 class Noah < Formula
   desc "Persistent memory for AI coding agents (MCP over stdio, SQLite)"
   homepage "https://github.com/dicapower/noah"
-  version "0.4.1"
+  version "0.4.2"
   license "Apache-2.0"
 
   on_macos do
     on_arm do
-      url "https://github.com/dicapower/noah/releases/download/v0.4.1/noah-v0.4.1-darwin-arm64.tar.gz"
-      sha256 "15f74737e9c373d30e97380bb3687ce9af373d7d23fbafe815b92b31807baf0b"
+      url "https://github.com/dicapower/noah/releases/download/v0.4.2/noah-v0.4.2-darwin-arm64.tar.gz"
+      sha256 "e8ce33b76c2d9be93a319ad0a9525ce7f7af2e1b51e11a4562f4a558c8673cd8"
     end
     on_intel do
-      url "https://github.com/dicapower/noah/releases/download/v0.4.1/noah-v0.4.1-darwin-amd64.tar.gz"
-      sha256 "1d077e4a0960b65a135ed8258151b10bd5b6b052cd28e8badbe0fce6d80467a1"
+      url "https://github.com/dicapower/noah/releases/download/v0.4.2/noah-v0.4.2-darwin-amd64.tar.gz"
+      sha256 "3b3735c0b481268952f299002ac3512a34e89c86323e4c4a9d3ea31e964de65e"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/dicapower/noah/releases/download/v0.4.1/noah-v0.4.1-linux-arm64.tar.gz"
-      sha256 "42831435cbf05eaf8501d30759c6ba9a22b26295d446be7a5a2648f3f83a36a6"
+      url "https://github.com/dicapower/noah/releases/download/v0.4.2/noah-v0.4.2-linux-arm64.tar.gz"
+      sha256 "a30786da68f6e711747621f6de8ac724f620e02b704b3e575ea3a7b044f0ea47"
     end
     on_intel do
-      url "https://github.com/dicapower/noah/releases/download/v0.4.1/noah-v0.4.1-linux-amd64.tar.gz"
-      sha256 "e64ac78599eecf0626f5e1f1deef723890d503e925ce57253215f305033d0ae3"
+      url "https://github.com/dicapower/noah/releases/download/v0.4.2/noah-v0.4.2-linux-amd64.tar.gz"
+      sha256 "e4c02d6540e6e478428ba0640b61f27cacf1f4546e75bc79042ca2abb78e8639"
     end
   end
 
