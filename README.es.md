@@ -298,8 +298,8 @@ Método y experimentos descartados: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 | Una memoria por... | hit@1 | hit@5 | hit@10 |
 |---|---:|---:|---:|
-| sesión | 87,4 % | 97,2 % | 98,9 % |
-| intercambio (usuario + asistente) | 85,5 % | 97,0 % | 98,3 % |
+| sesión | 88,3 % | 98,1 % | 98,9 % |
+| intercambio (usuario + asistente) | 86,4 % | 97,0 % | 98,5 % |
 
 Un orden aleatorio puntúa 18,9 % a 5. La categoría más débil son las preferencias (86,7 % y 80,0 % a 5), donde pregunta y respuesta no comparten palabras: "¿qué debería servir para cenar con mis ingredientes de la huerta?" frente a un chat sobre albahaca y menta. Es el límite "palabras, no significado" de más abajo.
 

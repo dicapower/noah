@@ -2,6 +2,7 @@ package query
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -66,5 +67,37 @@ func TestStemKeepsIdentifiersWhole(t *testing.T) {
 func TestMatchIdentifiersAreExact(t *testing.T) {
 	if got := Match("fix ENG-123 invoices", "any"); got != `"fix"* OR "eng"* OR "123" OR "invoic"*` {
 		t.Errorf("got %s", got)
+	}
+}
+
+func TestTime(t *testing.T) {
+	cases := []struct {
+		q      string
+		ok     bool
+		lo, hi float64
+		rest   string
+	}{
+		{"What kitchen appliance did I buy 10 days ago?", true, 8, 12, "what kitchen appliance did i buy   ?"},
+		{"I mentioned it four weeks ago", true, 25, 31, ""},
+		{"¿Qué compré hace dos semanas?", true, 12, 16, ""},
+		{"a couple of days ago", true, 1, 3, ""},
+		{"how did we fix the retry bug", false, 0, 0, ""},
+		{"how many weeks did the migration take", false, 0, 0, ""},
+		{"qué pasó ayer con el despliegue", true, 0, 2, ""},
+	}
+	for _, c := range cases {
+		w, rest, ok := Time(c.q)
+		if ok != c.ok {
+			t.Fatalf("%q: ok=%v want %v", c.q, ok, c.ok)
+		}
+		if !ok {
+			continue
+		}
+		if w.Lo > c.lo || w.Hi < c.hi {
+			t.Errorf("%q: window %v does not cover %v..%v", c.q, w, c.lo, c.hi)
+		}
+		if strings.Contains(rest, "ago") || strings.Contains(rest, "hace") {
+			t.Errorf("%q: phrase not removed: %q", c.q, rest)
+		}
 	}
 }

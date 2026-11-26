@@ -87,10 +87,11 @@ Process: `noah mcp` initialises in ~7 ms; MCP tool calls take 0.5-3 ms on a smal
 
 | Granularity | hit@1 | hit@5 | hit@10 | Preferences hit@5 |
 |---|---:|---:|---:|---:|
-| one memory per session (47 per question) | 0.874 | 0.972 | 0.989 | 0.867 |
-| one memory per exchange (248 per question) | 0.855 | 0.970 | 0.983 | 0.800 |
+| one memory per session (47 per question) | 0.883 | 0.981 | 0.989 | 0.867 |
+| one memory per exchange (248 per question) | 0.864 | 0.970 | 0.985 | 0.800 |
 
 - Controls: a random ranking gives 0.189 at 5 (answer sessions out of ~48, computed from the data). Two of the misses were read by hand and are genuine vocabulary gaps (question "music streaming service", answer session about Spotify; "homegrown ingredients" against basil and mint), not mapping errors.
+- Relative dates ("two weeks ago") are parsed by `query.Time` and ranked by when the note was created; before that change session hit@5 was 0.972 and temporal-reasoning 0.945 (now 0.976). One-memory-per-exchange hit@5 did not move.
 - Per-exchange hit@1 is lower because several exchanges of one session compete for the top places; hit@5 barely moves.
 - Roles are not prefixed to the text, sessions over 64 KB are cut (one case), and all questions are run in one process on 2 vCPUs in about 3 minutes.
 - Retrieval only. It says nothing about whether a model answers correctly with the result, and other tools' published numbers use their own harnesses and are not directly comparable.

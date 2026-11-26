@@ -58,6 +58,12 @@ const (
 	wPinned   = 0.08
 	halfLife  = 90.0 // days after which the recency signal has decayed to 1/e
 
+	// wTime is the share of relevance given to "was it created when the question
+	// says" when the question names a relative date ("two weeks ago"). In that
+	// case recency is switched off: the question asks about a moment in the
+	// past, not about the latest note.
+	wTime = 0.35
+
 	// minRelevance drops a hit whose query-dependent relevance (BM25 share plus
 	// term coverage) is below this fraction of the best hit's. Recency, trust and
 	// pinned only order hits that already match; they never keep a weak one alive.
@@ -71,6 +77,12 @@ func Run(ctx context.Context, src Source, q string, opt Options) ([]Hit, error) 
 	}
 	if opt.Now.IsZero() {
 		opt.Now = time.Now()
+	}
+	// A relative date in the question ("hace dos semanas") says when the note
+	// was written, not what it says, so it is lifted out of the text match.
+	win, rest, timed := query.Time(q)
+	if timed && len(query.Stems(rest)) > 0 {
+		q = rest
 	}
 	stems := query.Stems(q)
 	if len(stems) == 0 {
@@ -105,7 +117,11 @@ func Run(ctx context.Context, src Source, q string, opt Options) ([]Hit, error) 
 		}
 		cands = merge(cands, more)
 	}
-	return rerank(cands, stems, query.Terms(q), opt), nil
+	var tw *query.Window
+	if timed {
+		tw = &win
+	}
+	return rerank(cands, stems, query.Terms(q), opt, tw), nil
 }
 
 func merge(a, b []memory.Scored) []memory.Scored {
@@ -121,7 +137,7 @@ func merge(a, b []memory.Scored) []memory.Scored {
 	return a
 }
 
-func rerank(cands []memory.Scored, stems, terms []string, opt Options) []Hit {
+func rerank(cands []memory.Scored, stems, terms []string, opt Options, when *query.Window) []Hit {
 	if len(cands) == 0 {
 		return nil
 	}
@@ -186,7 +202,13 @@ func rerank(cands []memory.Scored, stems, terms []string, opt Options) []Hit {
 			pin = 1
 		}
 		rel := wBM25*bm + wCoverage*cov + wTitle*titleCov
-		score := rel + wRecency*rec + wTrust*m.Trust.Rank() + wPinned*pin
+		wRec := wRecency
+		if when != nil {
+			created := math.Max(0, opt.Now.Sub(time.UnixMilli(m.CreatedAt)).Hours()/24)
+			rel = (1-wTime)*rel + wTime*timeFit(created, *when)
+			wRec = 0
+		}
+		score := rel + wRec*rec + wTrust*m.Trust.Rank() + wPinned*pin
 		hits = append(hits, Hit{Memory: m, Score: score, rel: rel, Matched: matched, Total: len(stems), Snippet: snippet(m.Content, stems)})
 	}
 	sort.SliceStable(hits, func(i, j int) bool {
@@ -210,6 +232,19 @@ func rerank(cands []memory.Scored, stems, terms []string, opt Options) []Hit {
 		hits = hits[:opt.Limit]
 	}
 	return hits
+}
+
+// timeFit is 1 when a memory of the given age falls inside the window and
+// fades linearly to 0 over one more window width outside it.
+func timeFit(age float64, w query.Window) float64 {
+	if age >= w.Lo && age <= w.Hi {
+		return 1
+	}
+	dist := w.Lo - age
+	if age > w.Hi {
+		dist = age - w.Hi
+	}
+	return math.Max(0, 1-dist/math.Max(w.Hi-w.Lo, 2))
 }
 
 func wordSet(folded string) map[string]bool {

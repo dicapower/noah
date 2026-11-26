@@ -204,3 +204,28 @@ func contains(xs []string, x string) bool {
 	}
 	return false
 }
+
+type fixedSource []memory.Scored
+
+func (f fixedSource) Candidates(context.Context, string, string, string, int) ([]memory.Scored, error) {
+	return f, nil
+}
+
+// A question that names a relative date prefers the note written then, even
+// when an older or newer note matches the topic words equally well, and it
+// does not prefer the newest note.
+func TestRelativeDateSelectsNoteFromThatTime(t *testing.T) {
+	now := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+	at := func(daysAgo int) int64 { return now.AddDate(0, 0, -daysAgo).UnixMilli() }
+	mk := func(id int64, daysAgo int) memory.Scored {
+		return memory.Scored{BM25: -1, Memory: memory.Memory{ID: id, Title: "bought blender", Content: "I bought a blender", CreatedAt: at(daysAgo), UpdatedAt: at(daysAgo), Trust: memory.TrustAgent}}
+	}
+	src := fixedSource{mk(1, 1), mk(2, 14), mk(3, 60)}
+	hits, err := search.Run(context.Background(), src, "What did I buy two weeks ago? blender", search.Options{Now: now})
+	if err != nil || len(hits) == 0 {
+		t.Fatalf("hits=%v err=%v", hits, err)
+	}
+	if hits[0].Memory.ID != 2 {
+		t.Fatalf("top hit is %d, want the note from two weeks ago (2)", hits[0].Memory.ID)
+	}
+}

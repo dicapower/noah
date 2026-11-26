@@ -300,8 +300,8 @@ Method and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 | One memory per... | hit@1 | hit@5 | hit@10 |
 |---|---:|---:|---:|
-| session | 87.4% | 97.2% | 98.9% |
-| exchange (user + assistant) | 85.5% | 97.0% | 98.3% |
+| session | 88.3% | 98.1% | 98.9% |
+| exchange (user + assistant) | 86.4% | 97.0% | 98.5% |
 
 A random ranking scores 18.9% at 5. The weakest category is preferences (86.7% and 80.0% at 5), where question and answer share no words: "what should I serve for dinner with my homegrown ingredients?" against a chat about basil and mint. That is the "words, not meaning" limit below.
 
