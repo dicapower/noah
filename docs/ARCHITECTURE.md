@@ -24,7 +24,8 @@ reproduces the scale table below.
 | Area | Decision | Why |
 |---|---|---|
 | Language | Go | The hot path is C SQLite either way, so Go vs Rust changes little for performance. Go gives trivial cross-compilation, a single binary and a larger pool of contributors for agent tooling. |
-| SQLite driver | `database/sql` over two build-tagged drivers: pure-Go `modernc.org/sqlite` (default, `go install` works anywhere) and cgo `mattn/go-sqlite3` for release binaries | Measured: cgo is ~2.2x faster on search (15 ms vs 34 ms p50) and ~1.4x on inserts. Pure Go keeps contribution and cross-builds simple. Same code, same tests. |
+| SQLite driver | Pure-Go `modernc.org/sqlite` only, `CGO_ENABLED=0` everywhere | `go install` works anywhere and cross-builds are trivial. An earlier measurement found cgo `mattn/go-sqlite3` about 2.2x faster on search (15 ms vs 34 ms p50) and 1.4x on inserts; that gain was judged not worth losing single-binary cross-compilation, so no cgo driver exists. |
+| Relative dates | `query.Time` parses "N days/weeks/months/years ago", yesterday and last week/month/year (English and Spanish) into an age window, removes the phrase from the text match, and the reranker blends a creation-date fit into relevance (35%) while switching recency off | Agents ask "what did we decide last week?" and words alone cannot answer it. It adds no schema, tool or dependency. Measured on LongMemEval-S: temporal-reasoning hit@5 0.945 to 0.976. Dates use creation time, not update time, because the question asks when it happened. |
 | Tokenizer | FTS5 `unicode61 remove_diacritics 2` with query-time prefixes, **not** `trigram`; prefix index for 2-4 letter prefixes | Measured against trigram: index 3x smaller (30.6 MB vs 89.3 MB), inserts ~4x faster, search ~2.7x faster. Prefix matching covers simple inflections; embeddings (planned) cover synonyms. The 2-4 letter prefix index halves short-term search (62 to 33 ms at 10k) for +40% size and -20% insert rate; short terms (`api`, `sql`, `jwt`) are common in code. |
 | Identifiers | Words containing digits are never trimmed or prefix-matched | Found by the recall benchmark: `zorblax1` also matched `zorblax10..19`. `ENG-12` must not match `ENG-123`. |
 | Hooks (Claude Code) | `SessionStart` injects a trusted protocol plus recent memories on startup, resume, clear and compact; optional `Stop` asks once per session to save after 10+ tool calls with no noah save | Claude Code cannot inject context from `PreCompact`, so SessionStart with source `compact` is what restores memory after compaction. The Stop nudge reads the transcript locally, is capped at one per session and honours `stop_hook_active` to avoid loops. |
@@ -45,11 +46,11 @@ cmd/noah             CLI, `noah mcp`, `noah hook session-start`, `noah setup`
 internal/memory      domain: Memory, Trust, space resolution, validation, context rendering (no I/O)
 internal/store       SQLite adapter: migrations, save pipeline, reads, doctor
 internal/search      two-phase retrieval and reranking over a Source interface
-internal/query       natural-language question to FTS5 query (stopwords, diacritics, stems)
+internal/query       natural-language question to FTS5 query (stopwords, diacritics, stems) and relative-date parsing (`Time`)
 internal/secrets     secret detection and write policy
 internal/mcpserver   MCP tools adapter (stdio), six tools
 ```
-Not built yet: `internal/embed` (optional embeddings), the cgo driver build tag.
+Not built yet: `internal/embed` (optional embeddings).
 
 Patterns used on purpose: ports and adapters (store, embedder, scanner behind
 interfaces so they are testable and swappable), a save pipeline
@@ -101,7 +102,7 @@ Process: `noah mcp` initialises in ~7 ms; MCP tool calls take 0.5-3 ms on a smal
 - **Vocabulary mismatch.** Search matches words and simple inflections. "What database did we choose?" does not find a note that only says "SQLite". Optional embeddings are designed for this and not built yet.
 - **Cost grows linearly with the number of memories matching the query**, at about 1.7 microseconds each, because FTS5 scores every match. A term present in most memories at 100k memories costs ~280 ms. Typical queries match far fewer. A document-frequency cut (drop near-universal terms when others exist) is the next optimisation.
 - **The synthetic benchmark is lexically dense.** The 50/50 comes from distinctive planted identifiers. LongMemEval-S (above) is closer to real text, but it is chat transcripts, not the short notes an agent writes; recall on real memories still has to be measured.
-- The default build uses the pure-Go SQLite driver; a cgo build tag (about 2x faster searches in earlier measurements) is not wired yet.
+- Pure-Go SQLite only: searches are about 2x slower than a cgo driver would be in earlier measurements. Accepted on purpose (see Decisions).
 - The project space comes from the directory the agent launches `noah mcp` in. Agents that start MCP servers outside the project directory need `NOAH_SPACE` or `--space`.
 - No multi-machine sync. Use `noah export` and Git for sharing.
 

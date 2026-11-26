@@ -201,7 +201,7 @@ Seis herramientas, pocas a propósito porque cada descripción consume contexto 
 
 | Herramienta | Qué hace |
 |---|---|
-| `mem_search` | Búsqueda en lenguaje natural; devuelve las mejores coincidencias con un fragmento |
+| `mem_search` | Búsqueda en lenguaje natural; devuelve las mejores coincidencias con un fragmento. Entiende fechas relativas ("hace dos semanas", "two weeks ago") y prioriza las notas de esa época |
 | `mem_save` | Guarda una memoria; el mismo `topic` la revisa |
 | `mem_get` | Lee una memoria completa |
 | `mem_context` | Fijadas, luego decisiones y convenciones, luego las recientes, dentro de un presupuesto de tokens |

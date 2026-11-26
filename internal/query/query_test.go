@@ -101,3 +101,18 @@ func TestTime(t *testing.T) {
 		}
 	}
 }
+
+func TestTimeEdgeCases(t *testing.T) {
+	for _, q := range []string{"hace 3 meses", "hace un año", "99999999999 days ago", "0 days ago", "hace 0 días", "ago", "hace", "last week", ""} {
+		w, _, ok := Time(q)
+		if ok && (w.Lo < 0 || w.Hi < w.Lo) {
+			t.Errorf("%q: bad window %v", q, w)
+		}
+	}
+	if _, _, ok := Time("ago"); ok {
+		t.Error("bare 'ago' must not be a date")
+	}
+	if w, _, ok := Time("hace 3 meses"); !ok || w.Lo > 90 || w.Hi < 90 {
+		t.Errorf("3 months should cover 90 days: %v %v", w, ok)
+	}
+}

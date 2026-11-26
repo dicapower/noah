@@ -203,7 +203,7 @@ Six tools, kept deliberately few because every tool description costs context on
 
 | Tool | What it does |
 |---|---|
-| `mem_search` | Natural-language search; returns the best matches with a snippet |
+| `mem_search` | Natural-language search; returns the best matches with a snippet. Understands relative dates ("two weeks ago", "hace dos semanas") and ranks notes from that time first |
 | `mem_save` | Save a memory; the same `topic` revises it |
 | `mem_get` | Read one memory in full |
 | `mem_context` | Pinned notes, then decisions and conventions, then recent ones, within a token budget |
@@ -315,6 +315,7 @@ NOAH_LONGMEMEVAL=/path/longmemeval_s_cleaned.json go test ./internal/search -run
 ## Known limits
 
 - **Saving still depends on the agent.** The hooks remind it at the right moments, but no tool can decide by itself what is worth keeping.
+- **Relative dates are English and Spanish only** and use when a note was created ("last week", "hace 10 días"); absolute dates such as "on March 3rd" are matched as ordinary words.
 - **Matches words, not meaning.** "What database did we choose?" will not find a note that only says "SQLite". Optional embeddings are planned.
 - **A word that appears in almost every memory is slow at very large sizes** (about 280 ms at 100,000 memories). Normal queries are much faster.
 - **No sync between machines.** Share with `noah export` and Git.
