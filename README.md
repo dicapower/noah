@@ -294,6 +294,24 @@ Synthetic memories of ~900 characters on a 2-vCPU machine:
 
 Method and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+### Public benchmark: LongMemEval-S
+
+[LongMemEval-S](https://github.com/xiaowu0162/LongMemEval) has 500 questions, each with about 48 chat sessions to search. noah gets each question verbatim and counts a hit when one of the first results comes from a session that holds the answer. 470 questions are scored (the 30 abstention questions have no answer). This measures retrieval only; no model reads the result.
+
+| One memory per... | hit@1 | hit@5 | hit@10 |
+|---|---:|---:|---:|
+| session | 87.4% | 97.2% | 98.9% |
+| exchange (user + assistant) | 85.5% | 97.0% | 98.3% |
+
+A random ranking scores 18.9% at 5. The weakest category is preferences (86.7% and 80.0% at 5), where question and answer share no words: "what should I serve for dinner with my homegrown ingredients?" against a chat about basil and mint. That is the "words, not meaning" limit below.
+
+Reproduce it (the 277 MB data file is not in this repository; download `longmemeval_s_cleaned.json` from the dataset's [Hugging Face page](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned)):
+
+```sh
+NOAH_LONGMEMEVAL=/path/longmemeval_s_cleaned.json go test ./internal/search -run TestLongMemEval -v
+# NOAH_LME_GRAN=round for per-exchange memories, NOAH_LME_N=100 for a quick run, NOAH_LME_MISSES=1 to list the misses
+```
+
 ## Known limits
 
 - **Saving still depends on the agent.** The hooks remind it at the right moments, but no tool can decide by itself what is worth keeping.
@@ -301,7 +319,7 @@ Method and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **A word that appears in almost every memory is slow at very large sizes** (about 280 ms at 100,000 memories). Normal queries are much faster.
 - **No sync between machines.** Share with `noah export` and Git.
 - **The `⚠` detector is a heuristic.** It looks for a short list of known injection phrases, download-and-run commands and hidden characters. It misses paraphrased attacks, and v0.4.0 raised false alarms on real notes before it was narrowed in v0.4.1. Treat it as a smoke alarm, not a guarantee.
-- The numbers above come from synthetic data; results on real notes will vary.
+- The first table comes from synthetic data and LongMemEval is chat transcripts, not the short notes an agent writes; results on your notes will vary.
 
 ## Brand
 

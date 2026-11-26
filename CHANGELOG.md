@@ -4,6 +4,9 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 
 ## Unreleased
 
+### Added
+- **LongMemEval-S benchmark** (`TestLongMemEval`, skipped unless `NOAH_LONGMEMEVAL` points at the dataset). noah finds the answer session in the top 5 for 97.2% of the 470 scored questions (97.0% with one memory per exchange); a random ranking scores 18.9%. Weakest category: preferences, 86.7%, where the question shares no words with the answer. Method and commands in the README and `docs/ARCHITECTURE.md`.
+
 - Logos of Rubio (Rubio-IA) and Noah (noah), plus the shared social preview image and Roma. See `assets/BRAND.md`.
 
 ## v0.4.2

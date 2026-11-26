@@ -292,6 +292,24 @@ Memorias sintéticas de ~900 caracteres en una máquina de 2 vCPU:
 
 Método y experimentos descartados: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+### Benchmark público: LongMemEval-S
+
+[LongMemEval-S](https://github.com/xiaowu0162/LongMemEval) tiene 500 preguntas, cada una con unas 48 sesiones de chat donde buscar. noah recibe cada pregunta tal cual y cuenta un acierto cuando uno de los primeros resultados sale de una sesión que contiene la respuesta. Se puntúan 470 preguntas (las 30 de abstención no tienen respuesta). Mide solo la recuperación; ningún modelo lee el resultado.
+
+| Una memoria por... | hit@1 | hit@5 | hit@10 |
+|---|---:|---:|---:|
+| sesión | 87,4 % | 97,2 % | 98,9 % |
+| intercambio (usuario + asistente) | 85,5 % | 97,0 % | 98,3 % |
+
+Un orden aleatorio puntúa 18,9 % a 5. La categoría más débil son las preferencias (86,7 % y 80,0 % a 5), donde pregunta y respuesta no comparten palabras: "¿qué debería servir para cenar con mis ingredientes de la huerta?" frente a un chat sobre albahaca y menta. Es el límite "palabras, no significado" de más abajo.
+
+Para reproducirlo (el archivo de datos de 277 MB no está en este repositorio; descarga `longmemeval_s_cleaned.json` de la [página del dataset en Hugging Face](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned)):
+
+```sh
+NOAH_LONGMEMEVAL=/ruta/longmemeval_s_cleaned.json go test ./internal/search -run TestLongMemEval -v
+# NOAH_LME_GRAN=round para memorias por intercambio, NOAH_LME_N=100 para una prueba rápida, NOAH_LME_MISSES=1 para listar los fallos
+```
+
 ## Límites conocidos
 
 - **Guardar sigue dependiendo del agente.** Los hooks se lo recuerdan en los momentos clave, pero ninguna herramienta puede decidir sola qué merece conservarse.
@@ -299,7 +317,7 @@ Método y experimentos descartados: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **Una palabra presente en casi todas las memorias es lenta a tamaños muy grandes** (unos 280 ms con 100.000 memorias). Las consultas normales son mucho más rápidas.
 - **Sin sincronización entre equipos.** Comparte con `noah export` y Git.
 - **El detector `⚠` es una heurística.** Busca una lista corta de frases de inyección conocidas, comandos de descargar-y-ejecutar y caracteres ocultos. No detecta ataques parafraseados, y la v0.4.0 dio falsas alarmas con notas reales antes de estrecharlo en la v0.4.1. Es una alarma de humo, no una garantía.
-- Las cifras salen de datos sintéticos; con notas reales variarán.
+- La primera tabla sale de datos sintéticos y LongMemEval son transcripciones de chat, no las notas cortas que escribe un agente; con tus notas variará.
 
 ## Marca
 

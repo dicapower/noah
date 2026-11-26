@@ -81,11 +81,25 @@ Process: `noah mcp` initialises in ~7 ms; MCP tool calls take 0.5-3 ms on a smal
 - **Min-max normalising BM25 across candidates**: with few candidates a tiny score gap became the whole 0..1 range and drowned recency, trust and pinned. Scores are now relative to the best match.
 - **`ORDER BY rank`**: slower than explicit `bm25()` with column weights.
 
+## LongMemEval-S
+
+`TestLongMemEval` (`internal/search/longmemeval_test.go`) runs the public LongMemEval-S retrieval task through the normal path: one empty database per question, its ~48 history sessions saved with `Store.Save` (secret redaction included), the question asked verbatim to `search.Run` with recency measured at the question date. A question is a hit@k when one of the first k results comes from `answer_session_ids`; the 30 abstention questions are skipped. It reports and never asserts, so it cannot gate a change the way `TestRecall` does.
+
+| Granularity | hit@1 | hit@5 | hit@10 | Preferences hit@5 |
+|---|---:|---:|---:|---:|
+| one memory per session (47 per question) | 0.874 | 0.972 | 0.989 | 0.867 |
+| one memory per exchange (248 per question) | 0.855 | 0.970 | 0.983 | 0.800 |
+
+- Controls: a random ranking gives 0.189 at 5 (answer sessions out of ~48, computed from the data). Two of the misses were read by hand and are genuine vocabulary gaps (question "music streaming service", answer session about Spotify; "homegrown ingredients" against basil and mint), not mapping errors.
+- Per-exchange hit@1 is lower because several exchanges of one session compete for the top places; hit@5 barely moves.
+- Roles are not prefixed to the text, sessions over 64 KB are cut (one case), and all questions are run in one process on 2 vCPUs in about 3 minutes.
+- Retrieval only. It says nothing about whether a model answers correctly with the result, and other tools' published numbers use their own harnesses and are not directly comparable.
+
 ## Known limits
 
 - **Vocabulary mismatch.** Search matches words and simple inflections. "What database did we choose?" does not find a note that only says "SQLite". Optional embeddings are designed for this and not built yet.
 - **Cost grows linearly with the number of memories matching the query**, at about 1.7 microseconds each, because FTS5 scores every match. A term present in most memories at 100k memories costs ~280 ms. Typical queries match far fewer. A document-frequency cut (drop near-universal terms when others exist) is the next optimisation.
-- **Benchmarks are synthetic and lexically dense.** Recall on real memories still has to be measured; the 50/50 comes from distinctive planted identifiers.
+- **The synthetic benchmark is lexically dense.** The 50/50 comes from distinctive planted identifiers. LongMemEval-S (above) is closer to real text, but it is chat transcripts, not the short notes an agent writes; recall on real memories still has to be measured.
 - The default build uses the pure-Go SQLite driver; a cgo build tag (about 2x faster searches in earlier measurements) is not wired yet.
 - The project space comes from the directory the agent launches `noah mcp` in. Agents that start MCP servers outside the project directory need `NOAH_SPACE` or `--space`.
 - No multi-machine sync. Use `noah export` and Git for sharing.
