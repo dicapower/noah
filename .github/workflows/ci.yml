@@ -28,3 +28,26 @@ jobs:
         with:
           go-version-file: go.mod
       - run: NOAH_RECALL_N=10000 go test ./internal/search -run 'TestRecall' -v -count=1
+
+  install:
+    # Proves the one-line installers work on a clean machine, against the
+    # latest published release.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          NOAH_INSTALL_DIR="$RUNNER_TEMP/bin" sh install.sh
+          "$RUNNER_TEMP/bin/noah" version
+      - name: Install (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:NOAH_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'bin'
+          ./install.ps1
+          & (Join-Path $env:NOAH_INSTALL_DIR 'noah.exe') version

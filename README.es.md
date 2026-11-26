@@ -26,6 +26,46 @@ en el proyecto correcto, sin que tengas que pegar contexto.
 
 > **Estado: v0.4, antes de la 1.0.** Funciona y tiene tests, pero es joven; el formato de almacenamiento y los comandos aún pueden cambiar (las bases de datos se migran solas). Los límites conocidos están [al final](#límites-conocidos).
 
+## noah y Rubio-IA: qué son y cómo encajan
+
+Dos herramientas pequeñas con trabajos distintos. Funcionan mejor juntas, y cada una funciona sola.
+
+| | noah | Rubio-IA |
+|---|---|---|
+| Qué es | Una memoria: un cuaderno en tu ordenador donde el agente guarda y busca | Un acuerdo de trabajo: un bloque corto en las instrucciones de tu agente |
+| Responde a | "¿Qué decidimos la semana pasada?" | "¿Cómo debo trabajar aquí y cuándo uso mi memoria?" |
+| Sin la otra | Funciona. El agente guarda cuando se le ocurre | Funciona. Sus reglas de memoria se ignoran y los planes van a `docs/plans/` |
+
+```mermaid
+flowchart LR
+  R["Rubio-IA<br/>cómo trabajar<br/>~470 tokens"] -->|reglas| A["Tu agente<br/>Claude Code o Cursor"]
+  A <-->|guardar y buscar| N["noah<br/>qué recordar<br/>archivo SQLite local"]
+```
+
+Rubio-IA le dice al agente cuándo consultar y qué merece guardarse; noah lo conserva entre sesiones. Ninguna edita los archivos de la otra y ninguna usa la red.
+
+## Inicio rápido (unos 3 minutos)
+
+**1. Instala las dos.** macOS y Linux:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/dicapower/noah/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dicapower/rubio-ia/main/install.sh | sh
+```
+
+Windows (PowerShell, sin permisos de administrador):
+
+```powershell
+irm https://raw.githubusercontent.com/dicapower/noah/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/dicapower/rubio-ia/main/install.ps1 | iex
+```
+
+**2. Conecta noah a tu agente.** Claude Code: `claude mcp add noah --scope user -- noah mcp`. Cursor: ejecuta `noah setup` y sigue lo que imprime (nunca edita tu configuración).
+
+**3. Añade el acuerdo de trabajo.** `rubio setup` (responde en el idioma en que escribes) o `rubio setup --lang es-ES` para español de España.
+
+Abre una terminal nueva si no encuentra un comando, reinicia tu agente y comprueba con `noah doctor` y `rubio doctor`. Después, trabaja con normalidad: *"recuerda que usamos Firebase Auth para el login"*. Arrepentirse es seguro: `rubio remove` quita el acuerdo y cada cambio tiene copia de seguridad previa (`rubio restore`).
+
 ## Instalación
 
 Elige una. Todas instalan el mismo binario (`noah`), sin más dependencias.
@@ -45,7 +85,13 @@ brew tap dicapower/noah https://github.com/dicapower/noah
 brew install dicapower/noah/noah
 ```
 
-**Windows** ([Scoop](https://scoop.sh)):
+**Windows, una línea** (PowerShell, sin permisos de administrador, también sirve para actualizar):
+
+```powershell
+irm https://raw.githubusercontent.com/dicapower/noah/main/install.ps1 | iex
+```
+
+**Windows con** ([Scoop](https://scoop.sh)):
 
 ```powershell
 scoop bucket add noah https://github.com/dicapower/noah
@@ -124,10 +170,6 @@ Añade a `~/.cursor/mcp.json` (o `.cursor/mcp.json` dentro de un proyecto):
 Ejecuta `noah mcp` como servidor MCP por stdio.
 
 Después, trabaja con normalidad. Pídele a tu agente cosas como *"recuerda que usamos Firebase Auth para el login"* o *"¿qué decidimos sobre la base de datos?"*. El agente decide cuándo guardar y buscar con las herramientas de abajo.
-
-## Va de la mano de Rubio-IA
-
-noah es la memoria. [Rubio-IA](https://github.com/dicapower/rubio-ia) es su compañero: un acuerdo de trabajo corto (unos 470 tokens) que le dice a tu agente cómo trabajar y cuándo usar estas herramientas: dimensionar el trabajo, verificar antes de afirmar, llamar a `mem_context` al empezar y a `mem_save` tras una decisión. Cada uno funciona sin el otro. noah nunca edita las instrucciones de tu agente, y Rubio-IA nunca toca la base de datos de noah.
 
 ## Si vienes de Engram
 
