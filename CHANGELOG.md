@@ -4,10 +4,12 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 
 ## Unreleased
 
+## v0.5.0 — 2026-11-26
+
 ### Added
 - **Optional meaning-based search.** If a local static-embedding model (`potion-base-8M`, 30 MB, MIT) is in `~/.noah/model` or `NOAH_EMBED_MODEL`, search blends a similarity score (weight 0.3) into the ranking of notes that word search found. Pure Go reader (`internal/embed`), no cgo, no network, never downloaded by noah; off when the model is absent or `NOAH_EMBED=off`; `noah doctor` reports it. LongMemEval-S (session): hit@1 88.7% → 90.4%, hit@5 98.1% → 98.5%, preferences hit@5 86.7% → 90.0%. English-only model; Spanish untested.
-- **Calendar dates in questions.** "On March 3rd", "el 3 de marzo de 2026", "2026-06-20" and "last Tuesday" / "el martes pasado" now select notes created around that day (±1 day), like relative dates. Invalid dates (31 February) and numeric 03/04/2026 are ignored. LongMemEval-S hit@1 88.3% → 88.7%; hit@5 unchanged.
 - **Search by relative date.** A question such as "what did I buy two weeks ago?" or "qué compré hace dos semanas" (also yesterday, last week/month/year, ayer, el mes pasado) is turned into a date window; notes created then rank first and recency stops favouring the newest note. The date words no longer count as search terms. LongMemEval-S temporal-reasoning hit@5 went from 94.5% to 97.6%; `TestRecall` is unchanged.
+- **Calendar dates in questions.** "On March 3rd", "el 3 de marzo de 2026", "2026-06-20" and "last Tuesday" / "el martes pasado" now select notes created around that day (±1 day), like relative dates. Invalid dates (31 February) and numeric 03/04/2026 are ignored. LongMemEval-S hit@1 88.3% → 88.7%; hit@5 unchanged.
 - **LongMemEval-S benchmark** (`TestLongMemEval`, skipped unless `NOAH_LONGMEMEVAL` points at the dataset). noah finds the answer session in the top 5 for 98.1% of the 470 scored questions (97.0% with one memory per exchange); a random ranking scores 18.9%. Weakest category: preferences, 86.7%, where the question shares no words with the answer. Method and commands in the README and `docs/ARCHITECTURE.md`.
 
 - Logos of Rubio (Rubio-IA) and Noah (noah), plus the shared social preview image and Roma. See `assets/BRAND.md`.
@@ -15,7 +17,6 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 ## v0.4.2
 
 ### Added
-- **Search by relative date.** A question such as "what did I buy two weeks ago?" or "qué compré hace dos semanas" (also yesterday, last week/month/year, ayer, el mes pasado) is turned into a date window; notes created then rank first and recency stops favouring the newest note. The date words no longer count as search terms. LongMemEval-S temporal-reasoning hit@5 went from 94.5% to 97.6%; `TestRecall` is unchanged.
 - **Easy install and upgrade.** `install.sh` (one line, macOS and Linux, verifies the checksum, never uses `sudo`, same line upgrades), a Homebrew formula (`Formula/noah.rb`) and a Scoop manifest (`bucket/noah.json`). The release workflow regenerates the formula and manifest from each release's checksums, only for the latest release. `scripts/packaging.sh` does the generating.
 
 - **Windows one-line installer.** `install.ps1` (PowerShell, no admin rights, verifies the checksum, same line upgrades). CI installs from the latest release on macOS, Linux and Windows.
@@ -37,7 +38,6 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 ## v0.4.0
 
 ### Added
-- **Search by relative date.** A question such as "what did I buy two weeks ago?" or "qué compré hace dos semanas" (also yesterday, last week/month/year, ayer, el mes pasado) is turned into a date window; notes created then rank first and recency stops favouring the newest note. The date words no longer count as search terms. LongMemEval-S temporal-reasoning hit@5 went from 94.5% to 97.6%; `TestRecall` is unchanged.
 - **Token budgets.** `mem_search` and `mem_context` take `max_tokens` (default 1,500); the session-start hook is capped by `NOAH_START_TOKENS` (default 1,500). The best hit is always returned.
 - **Smarter start-up context.** Pinned notes first, then decisions, preferences and conventions (however old), and recent notes only as filler.
 - **Defence against memory poisoning.** Notes containing instructions aimed at the AI, download-and-run commands, links or hidden characters are flagged (`⚠`). A flagged note written by an agent stays searchable, with a warning, but is never injected automatically. Invisible and direction-changing characters are stripped from everything shown to the agent.
@@ -52,7 +52,6 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 ## v0.3.0
 
 ### Added
-- **Search by relative date.** A question such as "what did I buy two weeks ago?" or "qué compré hace dos semanas" (also yesterday, last week/month/year, ayer, el mes pasado) is turned into a date window; notes created then rank first and recency stops favouring the newest note. The date words no longer count as search terms. LongMemEval-S temporal-reasoning hit@5 went from 94.5% to 97.6%; `TestRecall` is unchanged.
 - **Global memory.** The reserved space `global` holds knowledge that applies to every project. Project searches, `noah context`, `mem_context` and the session-start hook include it automatically.
 - `noah move <id> <space>` to promote a memory to `global` or move it between projects (CLI only: agents cannot reorganise your memories). A clash in the target space is reported, never overwritten.
 - Search results name the space whenever they span more than one.
@@ -66,7 +65,6 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 ## v0.2.0
 
 ### Added
-- **Search by relative date.** A question such as "what did I buy two weeks ago?" or "qué compré hace dos semanas" (also yesterday, last week/month/year, ayer, el mes pasado) is turned into a date window; notes created then rank first and recency stops favouring the newest note. The date words no longer count as search terms. LongMemEval-S temporal-reasoning hit@5 went from 94.5% to 97.6%; `TestRecall` is unchanged.
 - `noah import engram` to bring an existing Engram database over (dry run, secrets redacted, original dates kept).
 - Auto-capture hooks for Claude Code: `hook session-start` injects the save protocol and recent memories (also after compaction); `hook stop` optionally nudges the agent to save after long work.
 - Relevance cutoff: weak matches are dropped instead of padding the results.
