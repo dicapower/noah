@@ -125,6 +125,10 @@ Ejecuta `noah mcp` como servidor MCP por stdio.
 
 Después, trabaja con normalidad. Pídele a tu agente cosas como *"recuerda que usamos Firebase Auth para el login"* o *"¿qué decidimos sobre la base de datos?"*. El agente decide cuándo guardar y buscar con las herramientas de abajo.
 
+## Va de la mano de Rubio-IA
+
+noah es la memoria. [Rubio-IA](https://github.com/dicapower/rubio-ia) es su compañero: un acuerdo de trabajo corto (unos 470 tokens) que le dice a tu agente cómo trabajar y cuándo usar estas herramientas: dimensionar el trabajo, verificar antes de afirmar, llamar a `mem_context` al empezar y a `mem_save` tras una decisión. Cada uno funciona sin el otro. noah nunca edita las instrucciones de tu agente, y Rubio-IA nunca toca la base de datos de noah.
+
 ## Si vienes de Engram
 
 Trae tus memorias con un comando. Tu base de datos de Engram solo se lee, desde una copia temporal.

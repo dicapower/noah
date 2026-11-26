@@ -127,6 +127,10 @@ Then just work. Ask your agent things like *"remember that we use Firebase Auth 
 *"what did we decide about the database?"*. The agent decides when to save and search using the
 tools below.
 
+## Pairs with Rubio-IA
+
+noah is the memory. [Rubio-IA](https://github.com/dicapower/rubio-ia) is its companion: a short working agreement (about 470 tokens) that tells your agent how to work and when to use these tools: size the work, verify before claiming, call `mem_context` at the start, `mem_save` after a decision. Each works without the other. noah never edits your agent's instructions, and Rubio-IA never touches noah's database.
+
 ## Moving from Engram
 
 Bring your existing memories with one command. Your Engram database is only read, from a temporary copy.
