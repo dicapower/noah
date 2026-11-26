@@ -301,6 +301,10 @@ Método y experimentos descartados: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **El detector `⚠` es una heurística.** Busca una lista corta de frases de inyección conocidas, comandos de descargar-y-ejecutar y caracteres ocultos. No detecta ataques parafraseados, y la v0.4.0 dio falsas alarmas con notas reales antes de estrecharlo en la v0.4.1. Es una alarma de humo, no una garantía.
 - Las cifras salen de datos sintéticos; con notas reales variarán.
 
+## Marca
+
+Los logos, la vista previa compartida y la paleta de colores están descritos en [assets/BRAND.md](assets/BRAND.md) (en inglés).
+
 ## Desarrollo
 
 ```sh

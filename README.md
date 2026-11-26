@@ -303,6 +303,10 @@ Method and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **The `⚠` detector is a heuristic.** It looks for a short list of known injection phrases, download-and-run commands and hidden characters. It misses paraphrased attacks, and v0.4.0 raised false alarms on real notes before it was narrowed in v0.4.1. Treat it as a smoke alarm, not a guarantee.
 - The numbers above come from synthetic data; results on real notes will vary.
 
+## Brand
+
+Logos, the shared social preview and the colour palette are described in [assets/BRAND.md](assets/BRAND.md).
+
 ## Development
 
 ```sh

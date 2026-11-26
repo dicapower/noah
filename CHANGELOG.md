@@ -2,6 +2,10 @@
 
 All notable changes to noah. Versions follow [Semantic Versioning](https://semver.org); while noah is below 1.0 the storage format and commands may still change, and any schema change migrates your database automatically on first run.
 
+## Unreleased
+
+- Logos of Rubio (Rubio-IA) and Noah (noah), plus the shared social preview image and Roma. See `assets/BRAND.md`.
+
 ## v0.4.2
 
 ### Added
