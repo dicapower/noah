@@ -17,6 +17,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/dicapower/noah/internal/embed"
 	"github.com/dicapower/noah/internal/mcpserver"
 	"github.com/dicapower/noah/internal/memory"
 	"github.com/dicapower/noah/internal/search"
@@ -168,7 +169,7 @@ func (c *cli) search(args []string) error {
 		return err
 	}
 	defer st.Close()
-	hits, err := search.Run(context.Background(), st, strings.Join(pos, " "), search.Options{Space: sp, Kind: *kind, Limit: *limit, Global: true})
+	hits, err := search.Run(context.Background(), st, strings.Join(pos, " "), search.Options{Space: sp, Kind: *kind, Limit: *limit, Global: true, Embedder: search.Auto()})
 	if err != nil {
 		return err
 	}
@@ -361,6 +362,14 @@ func (c *cli) doctor(args []string) int {
 	line(r.WithSecrets == 0, "no stored memory looks like it contains a credential (%d found: ids %v)", r.WithSecrets, r.SecretMemories)
 	if r.Unscoped > 0 {
 		fmt.Fprintf(c.out, "[info] %d memories are in %q: they were saved outside any project\n", r.Unscoped, memory.Unscoped)
+	}
+	switch dir, on, err := embed.Status(); {
+	case on:
+		fmt.Fprintf(c.out, "[info] meaning-based search is on (model in %s)\n", dir)
+	case err != nil:
+		fmt.Fprintf(c.out, "[info] meaning-based search is off: the model in %s cannot be used: %v\n", dir, err)
+	default:
+		fmt.Fprintln(c.out, "[info] meaning-based search is off (optional; see README, \"Meaning-based search\")")
 	}
 	if problems > 0 {
 		return 1

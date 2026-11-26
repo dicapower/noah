@@ -178,7 +178,7 @@ func (h *handler) search(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		space = ""
 	}
 	limit := clamp(req.GetInt("limit", 8), 1, 25)
-	hits, err := search.Run(ctx, h.st, q, search.Options{Space: space, Kind: req.GetString("kind", ""), Limit: limit, Now: time.Now(), Global: true})
+	hits, err := search.Run(ctx, h.st, q, search.Options{Space: space, Kind: req.GetString("kind", ""), Limit: limit, Now: time.Now(), Global: true, Embedder: search.Auto()})
 	if err != nil {
 		return fail(err)
 	}

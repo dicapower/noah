@@ -35,6 +35,43 @@ type Options struct {
 	// Global also searches the global space when Space is a project.
 	Global bool
 	Now    time.Time
+	// Embedder, when set, adds a meaning-based signal: candidates whose text is
+	// close in embedding space to the question rank higher. It is optional;
+	// without it search is lexical only.
+	Embedder Embedder
+	// SemWeight is the share of relevance given to that signal (default 0.3).
+	SemWeight float64
+}
+
+// Embedder turns text into a unit-length vector, or nil when it cannot.
+type Embedder interface {
+	Embed(text string) []float32
+}
+
+// semText bounds how much of a long note is embedded per candidate.
+const semText = 6000
+
+// semChunk is the target size, in characters, of one embedded passage.
+const semChunk = 300
+
+// chunks splits text on white space into passages of about n characters.
+func chunks(text string, n int) []string {
+	var out []string
+	var cur strings.Builder
+	for _, w := range strings.Fields(text) {
+		if cur.Len() > 0 && cur.Len()+1+len(w) > n {
+			out = append(out, cur.String())
+			cur.Reset()
+		}
+		if cur.Len() > 0 {
+			cur.WriteByte(' ')
+		}
+		cur.WriteString(w)
+	}
+	if cur.Len() > 0 {
+		out = append(out, cur.String())
+	}
+	return out
 }
 
 // Hit is one ranked result.
@@ -121,7 +158,7 @@ func Run(ctx context.Context, src Source, q string, opt Options) ([]Hit, error) 
 	if timed {
 		tw = &win
 	}
-	return rerank(cands, stems, query.Terms(q), opt, tw), nil
+	return rerank(cands, stems, query.Terms(q), q, opt, tw), nil
 }
 
 func merge(a, b []memory.Scored) []memory.Scored {
@@ -137,7 +174,7 @@ func merge(a, b []memory.Scored) []memory.Scored {
 	return a
 }
 
-func rerank(cands []memory.Scored, stems, terms []string, opt Options, when *query.Window) []Hit {
+func rerank(cands []memory.Scored, stems, terms []string, question string, opt Options, when *query.Window) []Hit {
 	if len(cands) == 0 {
 		return nil
 	}
@@ -169,6 +206,7 @@ func rerank(cands []memory.Scored, stems, terms []string, opt Options, when *que
 		idf[j] = math.Log(1 + float64(len(cands))/float64(maxInt(df[j], 1)))
 		idfSum += idf[j]
 	}
+	sem := semanticFit(cands, question, opt)
 	hits := make([]Hit, 0, len(cands))
 	for i, c := range cands {
 		m := c.Memory
@@ -202,6 +240,9 @@ func rerank(cands []memory.Scored, stems, terms []string, opt Options, when *que
 			pin = 1
 		}
 		rel := wBM25*bm + wCoverage*cov + wTitle*titleCov
+		if sem != nil {
+			rel = (1-opt.semWeight())*rel + opt.semWeight()*sem[i]
+		}
 		wRec := wRecency
 		if when != nil {
 			created := math.Max(0, opt.Now.Sub(time.UnixMilli(m.CreatedAt)).Hours()/24)
@@ -232,6 +273,65 @@ func rerank(cands []memory.Scored, stems, terms []string, opt Options, when *que
 		hits = hits[:opt.Limit]
 	}
 	return hits
+}
+
+func (o Options) semWeight() float64 {
+	if o.SemWeight > 0 {
+		return o.SemWeight
+	}
+	return 0.3
+}
+
+// semanticFit scores each candidate from 0 to 1 by how close its embedding is
+// to the question's, relative to the other candidates. It returns nil when no
+// embedder is set or the question has no vector.
+func semanticFit(cands []memory.Scored, question string, opt Options) []float64 {
+	if opt.Embedder == nil {
+		return nil
+	}
+	qv := opt.Embedder.Embed(question)
+	if qv == nil {
+		return nil
+	}
+	cos := make([]float64, len(cands))
+	lo, hi := math.Inf(1), math.Inf(-1)
+	for i, c := range cands {
+		cos[i] = math.NaN()
+		text := c.Memory.Title + "\n" + c.Memory.Content
+		if r := []rune(text); len(r) > semText {
+			text = string(r[:semText])
+		}
+		// A long note averages into a vague vector; the best short passage says
+		// more about whether it contains what the question is after.
+		best, any := math.Inf(-1), false
+		for _, chunk := range chunks(text, semChunk) {
+			if dv := opt.Embedder.Embed(chunk); dv != nil {
+				best, any = math.Max(best, dot(qv, dv)), true
+			}
+		}
+		if any {
+			cos[i] = best
+			lo, hi = math.Min(lo, best), math.Max(hi, best)
+		}
+	}
+	out := make([]float64, len(cands))
+	if hi-lo < 1e-9 {
+		return nil
+	}
+	for i := range cands {
+		if !math.IsNaN(cos[i]) {
+			out[i] = (cos[i] - lo) / (hi - lo)
+		}
+	}
+	return out
+}
+
+func dot(a, b []float32) float64 {
+	var s float64
+	for i := range a {
+		s += float64(a[i]) * float64(b[i])
+	}
+	return s
 }
 
 // timeFit is 1 when a memory of the given age falls inside the window and

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dicapower/noah/internal/embed"
 	"github.com/dicapower/noah/internal/memory"
 	"github.com/dicapower/noah/internal/search"
 	"github.com/dicapower/noah/internal/store"
@@ -42,6 +43,14 @@ func TestLongMemEval(t *testing.T) {
 	path := os.Getenv("NOAH_LONGMEMEVAL")
 	if path == "" {
 		t.Skip("set NOAH_LONGMEMEVAL to the longmemeval_s_cleaned.json path to run")
+	}
+	if dir := os.Getenv("NOAH_LME_EMBED"); dir != "" {
+		m, err := embed.Load(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lmeEmbedder = m
+		lmeSemWeight, _ = strconv.ParseFloat(os.Getenv("NOAH_LME_SEMW"), 64)
 	}
 	gran := os.Getenv("NOAH_LME_GRAN")
 	if gran == "" {
@@ -129,6 +138,12 @@ type lmeResult struct {
 
 const lmeDateLayout = "2006/01/02 (Mon) 15:04"
 
+// lmeEmbedder is set from NOAH_LME_EMBED (a Model2Vec directory) in TestLongMemEval.
+var (
+	lmeEmbedder  search.Embedder
+	lmeSemWeight float64
+)
+
 // lmeMaxBytes leaves room under memory.MaxContent for the longest note.
 const lmeMaxBytes = memory.MaxContent - 1024
 
@@ -191,7 +206,7 @@ func runLME(q lmeQuestion, gran string) (lmeResult, error) {
 	}
 
 	now, _ := time.Parse(lmeDateLayout, q.Date)
-	hits, err := search.Run(ctx, s, q.Question, search.Options{Space: "lme", Limit: 10, Now: now})
+	hits, err := search.Run(ctx, s, q.Question, search.Options{Space: "lme", Limit: 10, Now: now, Embedder: lmeEmbedder, SemWeight: lmeSemWeight})
 	if err != nil {
 		return res, err
 	}

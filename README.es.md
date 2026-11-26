@@ -310,10 +310,23 @@ NOAH_LONGMEMEVAL=/ruta/longmemeval_s_cleaned.json go test ./internal/search -run
 # NOAH_LME_GRAN=round para memorias por intercambio, NOAH_LME_N=100 para una prueba rápida, NOAH_LME_MISSES=1 para listar los fallos
 ```
 
+## Búsqueda por significado (opcional)
+
+Por defecto noah compara palabras. Si instalas un modelo local pequeño, también compara significado: "¿qué debería servir para cenar?" puede encontrar una nota sobre albahaca y menta. Está desactivada hasta que añades el modelo, y noah nunca descarga nada por sí mismo.
+
+```sh
+mkdir -p ~/.noah/model && cd ~/.noah/model
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/model.safetensors   # 30 MB
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/tokenizer.json
+noah doctor    # muestra "meaning-based search is on"
+```
+
+El modelo es `potion-base-8M` (licencia MIT), leído con un lector pequeño en Go puro: sin cgo, sin runtime, sin red. `NOAH_EMBED_MODEL=/carpeta` apunta a otro sitio y `NOAH_EMBED=off` lo desactiva. Solo reordena notas que la búsqueda por palabras ya encontró, así que no puede inventar coincidencias. Medido en LongMemEval-S (una memoria por sesión): hit@5 98,1 % → 98,5 %, preferencias 86,7 % → 90,0 %, hit@1 88,7 % → 90,4 %. Con una memoria por intercambio la mejora es menor (hit@1 86,4 % → 90,0 %, hit@5 97,0 % → 96,6 %). Este modelo es solo para inglés; con notas en español la mejora no está medida y puede ser nula.
+
 ## Límites conocidos
 
 - **Guardar sigue dependiendo del agente.** Los hooks se lo recuerdan en los momentos clave, pero ninguna herramienta puede decidir sola qué merece conservarse.
-- **Busca palabras, no significado.** "¿Qué base de datos elegimos?" no encontrará una nota que solo diga "SQLite". Están planificados embeddings opcionales.
+- **Busca palabras, no significado**, salvo que instales el modelo opcional (ver arriba). "¿Qué base de datos elegimos?" no encontrará una nota que solo diga "SQLite", y el modelo no rescata una nota que no comparte ninguna palabra con la pregunta.
 - **Una palabra presente en casi todas las memorias es lenta a tamaños muy grandes** (unos 280 ms con 100.000 memorias). Las consultas normales son mucho más rápidas.
 - **Sin sincronización entre equipos.** Comparte con `noah export` y Git.
 - **El detector `⚠` es una heurística.** Busca una lista corta de frases de inyección conocidas, comandos de descargar-y-ejecutar y caracteres ocultos. No detecta ataques parafraseados, y la v0.4.0 dio falsas alarmas con notas reales antes de estrecharlo en la v0.4.1. Es una alarma de humo, no una garantía.

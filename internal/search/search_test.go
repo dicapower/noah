@@ -229,3 +229,40 @@ func TestRelativeDateSelectsNoteFromThatTime(t *testing.T) {
 		t.Fatalf("top hit is %d, want the note from two weeks ago (2)", hits[0].Memory.ID)
 	}
 }
+
+// fakeEmbedder maps a few words to fixed directions so the test controls what
+// "close in meaning" is.
+type fakeEmbedder map[string][]float32
+
+func (f fakeEmbedder) Embed(text string) []float32 {
+	for k, v := range f {
+		if strings.Contains(strings.ToLower(text), k) {
+			return v
+		}
+	}
+	return nil
+}
+
+// Two notes match the question's word equally; only meaning tells them apart.
+// Without an embedder the order is a tie; with one, the closer note wins.
+func TestEmbedderBreaksALexicalTie(t *testing.T) {
+	now := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+	mk := func(id int64, content string) memory.Scored {
+		return memory.Scored{BM25: -1, Memory: memory.Memory{ID: id, Title: "note", Content: content, CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), Trust: memory.TrustAgent}}
+	}
+	src := fixedSource{mk(1, "phone gadget: bread recipe"), mk(2, "phone gadget: screen protector")}
+	emb := fakeEmbedder{"accessories": {1, 0}, "protector": {1, 0}, "bread": {0, 1}}
+	hits, err := search.Run(context.Background(), src, "phone accessories gadget", search.Options{Now: now, Embedder: emb})
+	if err != nil || len(hits) < 2 {
+		t.Fatalf("hits=%v err=%v", hits, err)
+	}
+	if hits[0].Memory.ID != 2 {
+		t.Fatalf("top is %d, want the note about a screen protector (2)", hits[0].Memory.ID)
+	}
+	// An embedder that knows nothing about the text changes nothing.
+	plain, _ := search.Run(context.Background(), src, "phone accessories gadget", search.Options{Now: now})
+	blind, _ := search.Run(context.Background(), src, "phone accessories gadget", search.Options{Now: now, Embedder: fakeEmbedder{}})
+	if len(plain) != len(blind) || plain[0].Memory.ID != blind[0].Memory.ID {
+		t.Fatal("an embedder without vectors must leave the ranking alone")
+	}
+}

@@ -98,6 +98,16 @@ Process: `noah mcp` initialises in ~7 ms; MCP tool calls take 0.5-3 ms on a smal
 - Roles are not prefixed to the text, sessions over 64 KB are cut (one case), and all questions are run in one process on 2 vCPUs in about 3 minutes.
 - Retrieval only. It says nothing about whether a model answers correctly with the result, and other tools' published numbers use their own harnesses and are not directly comparable.
 
+### Meaning-based search (optional)
+
+Candidates still come from FTS5; embeddings only re-rank them: `rel = 0.7*lexical + 0.3*cosine`, then the date blend. Each note is split into 300-character passages (first 6,000 characters) and the best passage scores, because one vector per long note blurs it. The model is Model2Vec `potion-base-8M` (WordPiece tokenizer, 29,528×256 float32 table, mean of token vectors, normalised): a pure-Go reader, about 80 ms per CLI search including load. It is optional because it adds 30 MB and is English only.
+
+Measured on LongMemEval-S, session granularity (hit@1 / hit@5 / hit@10): lexical .887/.981/.989; weight 0.3 .904/.985/.991; weight 0.4 .902/.989/.994 (misses 13 → 5). Per exchange: lexical .864/.970/.985; 0.3 .900/.966/.985. The default is 0.3 because 0.4 hurt per-exchange hit@5 more.
+
+Rejected before it: pseudo-relevance feedback (RM3/Rocchio query expansion). The literature says it drifts when the first retrieval is poor, and here it was worse (hit@5 .981 → .968, preferences .867 → .767). It was reverted.
+
+Not solved: multi-session aggregation questions, and any note that FTS does not retrieve. Unmeasured: real agent-written notes and Spanish.
+
 ## Known limits
 
 - **Vocabulary mismatch.** Search matches words and simple inflections. "What database did we choose?" does not find a note that only says "SQLite". Optional embeddings are designed for this and not built yet.

@@ -273,6 +273,8 @@ noah doctor | stale | export | version       maintenance
 | `NOAH_SPACE` | force the project | detected |
 | `NOAH_SECRETS` | `redact`, `block` or `off` | `redact` |
 | `NOAH_START_TOKENS` | size cap of the context injected at session start | `1500` |
+| `NOAH_EMBED_MODEL` | folder of the optional meaning-based model | `~/.noah/model` |
+| `NOAH_EMBED` | `off` ignores the model | on if present |
 
 ## Troubleshooting
 
@@ -312,11 +314,24 @@ NOAH_LONGMEMEVAL=/path/longmemeval_s_cleaned.json go test ./internal/search -run
 # NOAH_LME_GRAN=round for per-exchange memories, NOAH_LME_N=100 for a quick run, NOAH_LME_MISSES=1 to list the misses
 ```
 
+## Meaning-based search (optional)
+
+By default noah matches words. If you install a small local model, it also compares meaning, so "what should I serve for dinner?" can find a note about basil and mint. It is off until you add the model, and nothing is ever downloaded by noah itself.
+
+```sh
+mkdir -p ~/.noah/model && cd ~/.noah/model
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/model.safetensors   # 30 MB
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/tokenizer.json
+noah doctor    # prints "meaning-based search is on"
+```
+
+The model is `potion-base-8M` (MIT licence), read by a small pure-Go reader: no cgo, no runtime, no network. `NOAH_EMBED_MODEL=/dir` points elsewhere and `NOAH_EMBED=off` turns it off. It only re-ranks notes that word search already found, so it cannot invent matches. Measured on LongMemEval-S (one memory per session): hit@5 98.1% → 98.5%, preferences 86.7% → 90.0%, hit@1 88.7% → 90.4%. With one memory per exchange the gain is smaller (hit@1 86.4% → 90.0%, hit@5 97.0% → 96.6%). This model is English only; with Spanish notes the gain is untested and may be nil.
+
 ## Known limits
 
 - **Saving still depends on the agent.** The hooks remind it at the right moments, but no tool can decide by itself what is worth keeping.
 - **Dates are English and Spanish only** and use when a note was created: relative ("last week", "hace 10 días"), calendar ("March 3rd", "3 de marzo", "2026-06-20") and "last Tuesday" / "el martes pasado". Numeric forms such as 03/04/2026 are not read, because day-first and month-first are ambiguous.
-- **Matches words, not meaning.** "What database did we choose?" will not find a note that only says "SQLite". Optional embeddings are planned.
+- **Matches words, not meaning**, unless you install the optional model (see above). "What database did we choose?" will not find a note that only says "SQLite", and the model cannot rescue a note that shares no word with the question at all.
 - **A word that appears in almost every memory is slow at very large sizes** (about 280 ms at 100,000 memories). Normal queries are much faster.
 - **No sync between machines.** Share with `noah export` and Git.
 - **The `⚠` detector is a heuristic.** It looks for a short list of known injection phrases, download-and-run commands and hidden characters. It misses paraphrased attacks, and v0.4.0 raised false alarms on real notes before it was narrowed in v0.4.1. Treat it as a smoke alarm, not a guarantee.
