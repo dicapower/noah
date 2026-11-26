@@ -246,7 +246,7 @@ Synthetic memories of ~900 characters on a 2-vCPU machine:
 | 10,000 | 13–33 ms | ~900 | 26 MB | 50 / 50 |
 | 100,000 | 94–280 ms | ~860 | 259 MB | 50 / 50 |
 
-Method, comparisons and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Method and rejected experiments: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Known limits
 

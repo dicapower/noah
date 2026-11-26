@@ -244,7 +244,7 @@ Memorias sintéticas de ~900 caracteres en una máquina de 2 vCPU:
 | 10.000 | 13–33 ms | ~900 | 26 MB | 50 / 50 |
 | 100.000 | 94–280 ms | ~860 | 259 MB | 50 / 50 |
 
-Método, comparativas y experimentos descartados: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Método y experimentos descartados: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Límites conocidos
 

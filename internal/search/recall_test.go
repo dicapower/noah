@@ -21,7 +21,7 @@ import (
 //
 // The corpus is generated from a fixed seed, so every run sees the same data.
 // By default it uses 2,000 memories to stay fast; NOAH_RECALL_N=10000 runs the
-// larger case that bench/ also measures through the CLI.
+// larger case.
 
 var common = strings.Fields(`servicio datos equipo usuario despliegue configuración error cliente token cache cola test release rama
 módulo producción staging logs métrica alerta límite pool conexiones versión migración índice consulta

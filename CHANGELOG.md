@@ -26,11 +26,11 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 - **Smarter start-up context.** Pinned notes first, then decisions, preferences and conventions (however old), and recent notes only as filler.
 - **Defence against memory poisoning.** Notes containing instructions aimed at the AI, download-and-run commands, links or hidden characters are flagged (`⚠`). A flagged note written by an agent stays searchable, with a warning, but is never injected automatically. Invisible and direction-changing characters are stripped from everything shown to the agent.
 - `noah stale` lists notes nobody has used for months and notes flagged as suspicious. noah now records when a memory was last handed to an agent.
-- Regression tests for search quality (`TestRecall`, run in CI also at 10,000 memories) and for the token cost of the MCP tool definitions. `bench/bench.py` is the cross-tool benchmark.
+- Regression tests for search quality (`TestRecall`, run in CI also at 10,000 memories) and for the token cost of the MCP tool definitions.
 - `CLAUDE.md` with commands and the rules contributors must keep.
 
 ### Changed
-- **Search always widens to "any term".** Before, a question whose terms all matched at least 8 notes never looked further, so the note that held the rare terms but lacked one common word of the question ("configuramos", "producción") was never a candidate. Coverage is also weighted by the rarity of each term among the candidates, whole-word matches count more than prefix matches, and the title has its own weight. On the cross-tool benchmark, partial questions answered in the top 5 went from 14/20 to 20/20 at 10,000 memories (19/20 to 20/20 at 1,000); full questions stay 20/20. Cost: median search about 51 ms to 60 ms at 10,000 memories (process start included).
+- **Search always widens to "any term".** Before, a question whose terms all matched at least 8 notes never looked further, so the note that held the rare terms but lacked one common word of the question ("configuramos", "producción") was never a candidate. Coverage is also weighted by the rarity of each term among the candidates, whole-word matches count more than prefix matches, and the title has its own weight. On a synthetic benchmark, partial questions answered in the top 5 went from 14/20 to 20/20 at 10,000 memories (19/20 to 20/20 at 1,000); full questions stay 20/20. Cost: median search about 51 ms to 60 ms at 10,000 memories (process start included).
 - Schema v3 (adds `last_used_at` and `flags`; existing notes are flagged on first run).
 
 ## v0.3.0

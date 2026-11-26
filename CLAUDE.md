@@ -7,7 +7,6 @@ Persistent memory for AI coding agents. Go, SQLite (FTS5), MCP over stdio. Apach
 - Check everything: `go vet ./... && go test ./...`
 - Search-quality test (fixed seed, 2,000 memories): `go test ./internal/search -run TestRecall -v`; larger case: `NOAH_RECALL_N=10000`. Print numbers without asserting: `NOAH_RECALL_REPORT=1`.
 - Scale benchmark: `NOAH_SCALE=1000,10000 go test ./internal/search -run TestScale -v`
-- Cross-tool benchmark against Engram: `go build -o $BENCH_DIR/noah ./cmd/noah`, put an `engram` binary next to it, then `BENCH_DIR=/tmp/noah-bench python3 bench/bench.py noah 10000`.
 - Windows build check: `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./cmd/noah`
 
 ## Layout

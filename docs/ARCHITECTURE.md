@@ -29,7 +29,7 @@ reproduces the scale table below.
 | Identifiers | Words containing digits are never trimmed or prefix-matched | Found by the recall benchmark: `zorblax1` also matched `zorblax10..19`. `ENG-12` must not match `ENG-123`. |
 | Hooks (Claude Code) | `SessionStart` injects a trusted protocol plus recent memories on startup, resume, clear and compact; optional `Stop` asks once per session to save after 10+ tool calls with no noah save | Claude Code cannot inject context from `PreCompact`, so SessionStart with source `compact` is what restores memory after compaction. The Stop nudge reads the transcript locally, is capped at one per session and honours `stop_hook_active` to avoid loops. |
 | Global space | Reserved space `global`, searched with every project search and injected in the session context (max 6 recent) | Knowledge that is true across projects had no home; a per-project store forced either duplication or losing it. Moving a memory is a CLI-only operation (`noah move`), so an agent cannot reshuffle what the user organised. |
-| Sessions | None | Engram-style session start/end bookkeeping left 70 of 116 sessions open in the real install. Memories belong to a space, not a session; `updated_at` is enough. |
+| Sessions | None | Session start/end bookkeeping left 70 of 116 sessions open in a real install. Memories belong to a space, not a session; `updated_at` is enough. |
 | Trust | Agents (MCP) write with trust `agent`; only the CLI writes `user`. Agents cannot overwrite, pin or delete `user` memories | Memory poisoning is the main attack on agent memory; a poisoned note must not be able to rewrite what the human wrote. |
 | Retrieval | AND query first, then (since v0.4) always an OR query when the question has more than one term; top-N (50) candidates from FTS, rerank in Go | Ranking inside SQL over every match makes cost scale with match count. Reranking N candidates keeps it bounded. The OR phase used to run only when AND found fewer than 8 hits, which hid the note holding the rare terms of a question whenever the common words matched many others. |
 | Semantic search | Optional embeddings in their own table, scored only against the FTS candidates | Keeps rows small, avoids brute force over the whole database, and works with no model installed. Embedder is an interface (Ollama endpoint first). |
@@ -73,14 +73,6 @@ flimmerK?") whose answer is one planted memory.
 | 100,000 | 863 | 259 MB | 276 / 322 ms | 94 / 122 ms | 278 / 315 ms | 50 / 50 |
 
 Process: `noah mcp` initialises in ~7 ms; MCP tool calls take 0.5-3 ms on a small database.
-
-Against Engram v1 measured in the same environment (different synthetic corpus, so
-read as order of magnitude): inserts are about 6x faster at 10k and do not
-degrade with size (Engram's `add` p50 went from 1.4 ms at 1k to 6.9 ms at 10k);
-3-term search is about 3x faster (13 vs ~38 ms), short-term about 1.7x faster
-(33 vs 57 ms), the database is half the size (26 vs 52 MB), and natural-language
-questions find the right memory (Engram's AND-only mode returned nothing for 5 of 5).
-Common-term search is on par (30 vs 25 ms at 10k). Engram did not finish the 50k load.
 
 ### Tried and rejected
 
