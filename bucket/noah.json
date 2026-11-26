@@ -1,13 +1,13 @@
 {
-    "version": "0.4.2",
+    "version": "0.5.0",
     "description": "Persistent memory for AI coding agents (MCP over stdio, SQLite)",
     "homepage": "https://github.com/dicapower/noah",
     "license": "Apache-2.0",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/dicapower/noah/releases/download/v0.4.2/noah-v0.4.2-windows-amd64.zip",
-            "hash": "de6fea6acb07243e939febe11e3022b1c3b2e605d19af99a53be0b80eb3cce1d",
-            "extract_dir": "noah-v0.4.2-windows-amd64"
+            "url": "https://github.com/dicapower/noah/releases/download/v0.5.0/noah-v0.5.0-windows-amd64.zip",
+            "hash": "0b07caa9284f8f5b758f38854c5c087968b37538ee4d9e21d346995b905780cf",
+            "extract_dir": "noah-v0.5.0-windows-amd64"
         }
     },
     "bin": "noah.exe",
