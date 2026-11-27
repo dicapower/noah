@@ -11,6 +11,32 @@ Un solo archivo, en local, sin cuenta, sin nube, sin servicios en segundo plano.
 
 ---
 
+<details>
+<summary><b>Contenido</b></summary>
+
+- [Para qué sirve](#para-qué-sirve)
+- [noah y Rubio-IA: qué son y cómo encajan](#noah-y-rubio-ia-qué-son-y-cómo-encajan)
+- [Inicio rápido (unos 3 minutos)](#inicio-rápido-unos-3-minutos)
+- [Instalación](#instalación)
+- [Conecta tu agente (2 minutos)](#conecta-tu-agente-2-minutos)
+- [Si vienes de Engram](#si-vienes-de-engram)
+- [Uso desde la terminal](#uso-desde-la-terminal)
+- [Qué recibe el agente](#qué-recibe-el-agente)
+- [Memoria global](#memoria-global)
+- [Cómo se decide el proyecto](#cómo-se-decide-el-proyecto)
+- [Seguridad](#seguridad)
+- [Todos los comandos](#todos-los-comandos)
+- [Problemas frecuentes](#problemas-frecuentes)
+- [Rendimiento](#rendimiento)
+- [Búsqueda por significado (opcional)](#búsqueda-por-significado-opcional)
+- [Límites conocidos](#límites-conocidos)
+- [Contribuciones](#contribuciones)
+- [Marca](#marca)
+- [Desarrollo](#desarrollo)
+- [Licencia](#licencia)
+
+</details>
+
 ## Para qué sirve
 
 Los agentes (Claude Code, Cursor…) olvidan todo al terminar la sesión. `noah` les da un cuaderno

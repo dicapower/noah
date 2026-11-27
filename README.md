@@ -11,6 +11,32 @@ One file, runs locally, no account, no cloud, no background service.</p>
 
 ---
 
+<details>
+<summary><b>Contents</b></summary>
+
+- [Why](#why)
+- [noah and Rubio-IA: what they are and how they fit](#noah-and-rubio-ia-what-they-are-and-how-they-fit)
+- [Quick start (about 3 minutes)](#quick-start-about-3-minutes)
+- [Install](#install)
+- [Connect your agent (2 minutes)](#connect-your-agent-2-minutes)
+- [Moving from Engram](#moving-from-engram)
+- [Using it from the terminal](#using-it-from-the-terminal)
+- [What the agent gets](#what-the-agent-gets)
+- [Global memory](#global-memory)
+- [How projects work](#how-projects-work)
+- [Security](#security)
+- [All commands](#all-commands)
+- [Troubleshooting](#troubleshooting)
+- [Performance](#performance)
+- [Meaning-based search (optional)](#meaning-based-search-optional)
+- [Known limits](#known-limits)
+- [Contributing](#contributing)
+- [Brand](#brand)
+- [Development](#development)
+- [License](#license)
+
+</details>
+
 ## Why
 
 Coding agents (Claude Code, Cursor, …) forget everything when a session ends. `noah` gives them a

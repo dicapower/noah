@@ -5,6 +5,7 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 ## Unreleased
 
 ### Changed
+- Issue templates (bug report, question); blank issues are off and security reports are pointed to `SECURITY.md`. The READMEs open with a collapsible table of contents.
 - The optional model download in the README is now pinned to a fixed Hugging Face revision and verified with SHA-256; before it followed `main`.
 - `SECURITY.md` (how to report a vulnerability, scope, supported versions). The README says that outside contributions are not accepted.
 
