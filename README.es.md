@@ -332,6 +332,10 @@ El modelo es `potion-base-8M` (licencia MIT), leído con un lector pequeño en G
 - **El detector `⚠` es una heurística.** Busca una lista corta de frases de inyección conocidas, comandos de descargar-y-ejecutar y caracteres ocultos. No detecta ataques parafraseados, y la v0.4.0 dio falsas alarmas con notas reales antes de estrecharlo en la v0.4.1. Es una alarma de humo, no una garantía.
 - La primera tabla sale de datos sintéticos y LongMemEval son transcripciones de chat, no las notas cortas que escribe un agente; con tus notas variará.
 
+## Contribuciones
+
+noah lo mantiene una sola persona y no acepta pull requests ni contribuciones externas. Los informes de errores y las preguntas son bienvenidos como [issues](https://github.com/dicapower/noah/issues). El código es Apache-2.0, así que puedes hacer tu propio fork.
+
 ## Marca
 
 Los logos, la vista previa compartida y la paleta de colores están descritos en [assets/BRAND.md](assets/BRAND.md) (en inglés).
