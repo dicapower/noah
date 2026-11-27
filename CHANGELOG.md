@@ -4,6 +4,10 @@ All notable changes to noah. Versions follow [Semantic Versioning](https://semve
 
 ## Unreleased
 
+### Changed
+- The optional model download in the README is now pinned to a fixed Hugging Face revision and verified with SHA-256; before it followed `main`.
+- `SECURITY.md` (how to report a vulnerability, scope, supported versions). The README says that outside contributions are not accepted.
+
 ## v0.5.0 — 2026-11-26
 
 ### Added

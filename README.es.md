@@ -314,13 +314,21 @@ NOAH_LONGMEMEVAL=/ruta/longmemeval_s_cleaned.json go test ./internal/search -run
 
 Por defecto noah compara palabras. Si instalas un modelo local pequeño, también compara significado: "¿qué debería servir para cenar?" puede encontrar una nota sobre albahaca y menta. Está desactivada hasta que añades el modelo, y noah nunca descarga nada por sí mismo.
 
+Los comandos siguientes descargan una revisión fija del modelo (no `main`, que puede cambiar) y comprueban su SHA-256 antes de usarlo. `shasum` imprime `OK` por cada archivo; si imprime `FAILED`, borra los archivos y no los uses.
+
 ```sh
+R=bf8b056651a2c21b8d2565580b8569da283cab23
 mkdir -p ~/.noah/model && cd ~/.noah/model
-curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/model.safetensors   # 30 MB
-curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/tokenizer.json
-noah doctor    # muestra "meaning-based search is on"
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/$R/model.safetensors
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/$R/tokenizer.json
+shasum -a 256 -c - <<'EOF'
+f65d0f325faadc1e121c319e2faa41170d3fa07d8c89abd48ca5358d9a223de2  model.safetensors
+e67e803f624fb4d67dea1c730d06e1067e1b14d830e2c2202569e3ef0f70bb50  tokenizer.json
+EOF
+noah doctor
 ```
 
+`noah doctor` debe mostrar entonces "meaning-based search is on".
 El modelo es `potion-base-8M` (licencia MIT), leído con un lector pequeño en Go puro: sin cgo, sin runtime, sin red. `NOAH_EMBED_MODEL=/carpeta` apunta a otro sitio y `NOAH_EMBED=off` lo desactiva. Solo reordena notas que la búsqueda por palabras ya encontró, así que no puede inventar coincidencias. Medido en LongMemEval-S (una memoria por sesión): hit@5 98,1 % → 98,5 %, preferencias 86,7 % → 90,0 %, hit@1 88,7 % → 90,4 %. Con una memoria por intercambio la mejora es menor (hit@1 86,4 % → 90,0 %, hit@5 97,0 % → 96,6 %). Este modelo es solo para inglés; con notas en español la mejora no está medida y puede ser nula.
 
 ## Límites conocidos

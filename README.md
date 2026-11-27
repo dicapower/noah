@@ -318,13 +318,21 @@ NOAH_LONGMEMEVAL=/path/longmemeval_s_cleaned.json go test ./internal/search -run
 
 By default noah matches words. If you install a small local model, it also compares meaning, so "what should I serve for dinner?" can find a note about basil and mint. It is off until you add the model, and nothing is ever downloaded by noah itself.
 
+The commands below download a fixed revision of the model (not `main`, which can change) and check its SHA-256 before use. `shasum` prints `OK` for each file; if it prints `FAILED`, delete the files and do not use them.
+
 ```sh
+R=bf8b056651a2c21b8d2565580b8569da283cab23
 mkdir -p ~/.noah/model && cd ~/.noah/model
-curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/model.safetensors   # 30 MB
-curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/main/tokenizer.json
-noah doctor    # prints "meaning-based search is on"
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/$R/model.safetensors
+curl -LO https://huggingface.co/minishlab/potion-base-8M/resolve/$R/tokenizer.json
+shasum -a 256 -c - <<'EOF'
+f65d0f325faadc1e121c319e2faa41170d3fa07d8c89abd48ca5358d9a223de2  model.safetensors
+e67e803f624fb4d67dea1c730d06e1067e1b14d830e2c2202569e3ef0f70bb50  tokenizer.json
+EOF
+noah doctor
 ```
 
+`noah doctor` should then print "meaning-based search is on".
 The model is `potion-base-8M` (MIT licence), read by a small pure-Go reader: no cgo, no runtime, no network. `NOAH_EMBED_MODEL=/dir` points elsewhere and `NOAH_EMBED=off` turns it off. It only re-ranks notes that word search already found, so it cannot invent matches. Measured on LongMemEval-S (one memory per session): hit@5 98.1% → 98.5%, preferences 86.7% → 90.0%, hit@1 88.7% → 90.4%. With one memory per exchange the gain is smaller (hit@1 86.4% → 90.0%, hit@5 97.0% → 96.6%). This model is English only; with Spanish notes the gain is untested and may be nil.
 
 ## Known limits
